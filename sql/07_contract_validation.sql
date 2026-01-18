@@ -20,11 +20,13 @@ USE WAREHOUSE TRANSFORM_WH;
 CREATE OR REPLACE VIEW GOVERNANCE.CONTRACT_REGISTRY.VW_CONTRACT_STATUS AS
 SELECT 
     c.CONTRACT_ID,
-    c.CONTRACT_NAME,
+    c.CONTRACT_TYPE,
     c.VERSION,
     c.STATUS,
+    c.PRODUCER_SYSTEM,
     c.PRODUCER_TEAM,
-    c.PRODUCER_OWNER,
+    c.PRODUCER_EMAIL,
+    c.DESCRIPTION,
     COALESCE(cc.CONSUMER_COUNT, 0) AS CONSUMER_COUNT,
     c.CREATED_AT,
     c.UPDATED_AT
@@ -265,12 +267,12 @@ AS
 $$
 DECLARE
     v_contract_exists BOOLEAN DEFAULT FALSE;
-    v_contract_name VARCHAR;
+    v_contract_type VARCHAR;
     v_status VARCHAR;
 BEGIN
     -- Check if contract exists
-    SELECT TRUE, CONTRACT_NAME, STATUS
-    INTO v_contract_exists, v_contract_name, v_status
+    SELECT TRUE, CONTRACT_TYPE, STATUS
+    INTO v_contract_exists, v_contract_type, v_status
     FROM GOVERNANCE.CONTRACT_REGISTRY.CONTRACTS
     WHERE CONTRACT_ID = P_CONTRACT_ID
     ORDER BY VERSION DESC
@@ -292,7 +294,7 @@ BEGIN
         'Contract validated successfully'
     );
     
-    RETURN 'OK: Contract validated - ' || v_contract_name || ' (' || P_CONTRACT_ID || ')';
+    RETURN 'OK: Contract validated - ' || P_CONTRACT_ID || ' (type: ' || v_contract_type || ')';
 END;
 $$;
 
