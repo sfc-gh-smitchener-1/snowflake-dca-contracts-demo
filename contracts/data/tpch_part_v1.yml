@@ -1,0 +1,245 @@
+# ============================================================================
+# DATA CONTRACT: TPCH Part Data
+# ============================================================================
+# Producer: Demo Data Engineering Team
+# Source: Snowflake Sample TPCH Dataset
+# Updated: 2026-01-18
+# ============================================================================
+
+contract:
+  # ─────────────────────────────────────────────────────────────────────────
+  # IDENTITY & OWNERSHIP
+  # ─────────────────────────────────────────────────────────────────────────
+  id: tpch_part_v1
+  version: 1.0.0
+  status: active
+  
+  producer:
+    system: SNOWFLAKE_SAMPLE_TPCH
+    team: Demo Data Engineering
+    owner: demo-team@company.com
+    slack_channel: "#demo-data-contracts"
+  
+  # ─────────────────────────────────────────────────────────────────────────
+  # SCHEMA DEFINITION
+  # ─────────────────────────────────────────────────────────────────────────
+  schema:
+    database: RAW_${ENV}
+    schema: RAW_TPCH
+    table: PART_RAW
+    
+    columns:
+      - name: P_PARTKEY
+        type: NUMBER(38,0)
+        description: "Unique part identifier (primary key)"
+        constraints:
+          - not_null
+          - unique
+          - primary_key
+        tags:
+          DATA_CLASSIFICATION: INTERNAL
+          PII_TYPE: NONE
+          AI_ALLOWED: "TRUE"
+          
+      - name: P_NAME
+        type: VARCHAR(55)
+        description: "Part name"
+        constraints:
+          - not_null
+        tags:
+          DATA_CLASSIFICATION: INTERNAL
+          PII_TYPE: NONE
+          AI_ALLOWED: "TRUE"
+          
+      - name: P_MFGR
+        type: VARCHAR(25)
+        description: "Manufacturer name"
+        constraints:
+          - not_null
+        tags:
+          DATA_CLASSIFICATION: INTERNAL
+          PII_TYPE: NONE
+          AI_ALLOWED: "TRUE"
+          
+      - name: P_BRAND
+        type: VARCHAR(10)
+        description: "Brand identifier"
+        constraints:
+          - not_null
+        tags:
+          DATA_CLASSIFICATION: INTERNAL
+          PII_TYPE: NONE
+          AI_ALLOWED: "TRUE"
+          
+      - name: P_TYPE
+        type: VARCHAR(25)
+        description: "Part type"
+        constraints:
+          - not_null
+        tags:
+          DATA_CLASSIFICATION: INTERNAL
+          PII_TYPE: NONE
+          AI_ALLOWED: "TRUE"
+          
+      - name: P_SIZE
+        type: NUMBER(38,0)
+        description: "Part size"
+        constraints:
+          - not_null
+        tests:
+          - type: range
+            min: 1
+            max: 50
+        tags:
+          DATA_CLASSIFICATION: INTERNAL
+          PII_TYPE: NONE
+          AI_ALLOWED: "TRUE"
+          
+      - name: P_CONTAINER
+        type: VARCHAR(10)
+        description: "Container type"
+        constraints:
+          - not_null
+        tags:
+          DATA_CLASSIFICATION: INTERNAL
+          PII_TYPE: NONE
+          AI_ALLOWED: "TRUE"
+          
+      - name: P_RETAILPRICE
+        type: NUMBER(12,2)
+        description: "Retail price"
+        constraints:
+          - not_null
+        tests:
+          - type: range
+            min: 0
+        tags:
+          DATA_CLASSIFICATION: CONFIDENTIAL
+          PII_TYPE: NONE
+          AI_ALLOWED: "TRUE"
+          
+      - name: P_COMMENT
+        type: VARCHAR(23)
+        description: "Part comments"
+        constraints: []
+        tags:
+          DATA_CLASSIFICATION: INTERNAL
+          PII_TYPE: NONE
+          AI_ALLOWED: "TRUE"
+          
+      # ── System Columns ──
+      - name: _LOADED_AT
+        type: TIMESTAMP_NTZ
+        description: "Snowflake ingestion timestamp"
+        constraints:
+          - not_null
+        system_managed: true
+        
+      - name: _SOURCE_FILE
+        type: VARCHAR(1024)
+        description: "Source file or batch identifier"
+        system_managed: true
+        
+      - name: _ROW_HASH
+        type: VARCHAR(64)
+        description: "SHA256 hash of business columns for change detection"
+        system_managed: true
+        
+      - name: _IS_CURRENT
+        type: BOOLEAN
+        description: "Flag indicating if this is the current record version"
+        system_managed: true
+
+  # ─────────────────────────────────────────────────────────────────────────
+  # SERVICE LEVEL AGREEMENTS
+  # ─────────────────────────────────────────────────────────────────────────
+  sla:
+    freshness:
+      max_age_minutes: 240  # 4 hours - master data
+      measurement: "MAX(_LOADED_AT) vs CURRENT_TIMESTAMP()"
+      
+    completeness:
+      threshold_percent: 99.9
+      critical_columns:
+        - P_PARTKEY
+        - P_NAME
+        - P_RETAILPRICE
+        
+    availability:
+      uptime_percent: 99.9
+      maintenance_window: "Sunday 02:00-04:00 UTC"
+      
+    volume:
+      expected_daily_rows:
+        min: 150000
+        max: 250000
+      alert_on_variance_percent: 25
+
+  # ─────────────────────────────────────────────────────────────────────────
+  # QUALITY RULES
+  # ─────────────────────────────────────────────────────────────────────────
+  quality_rules:
+    - id: qr_001
+      name: valid_partkey
+      type: column_check
+      column: P_PARTKEY
+      sql: "P_PARTKEY > 0"
+      severity: error
+      
+    - id: qr_002
+      name: no_duplicate_parts
+      type: table_check
+      sql: "COUNT(*) = COUNT(DISTINCT P_PARTKEY) OR SUM(CASE WHEN _IS_CURRENT THEN 1 ELSE 0 END) = COUNT(DISTINCT P_PARTKEY)"
+      severity: error
+      
+    - id: qr_003
+      name: positive_price
+      type: column_check
+      column: P_RETAILPRICE
+      sql: "P_RETAILPRICE > 0"
+      severity: error
+      
+    - id: qr_004
+      name: valid_size_range
+      type: column_check
+      column: P_SIZE
+      sql: "P_SIZE BETWEEN 1 AND 50"
+      severity: warning
+
+  # ─────────────────────────────────────────────────────────────────────────
+  # GOVERNANCE & COMPLIANCE
+  # ─────────────────────────────────────────────────────────────────────────
+  governance:
+    classification: INTERNAL
+    residency_requirements: []
+    retention_days: 2555  # 7 years
+    ai_eligibility: "TRUE"
+    
+  # ─────────────────────────────────────────────────────────────────────────
+  # LINEAGE & DEPENDENCIES
+  # ─────────────────────────────────────────────────────────────────────────
+  lineage:
+    source_systems:
+      - name: Snowflake Sample Data TPCH
+        connection: SNOWFLAKE_SAMPLE_DATA.TPCH_SF1
+        extraction: DIRECT_LOAD
+        
+    downstream_dependencies:
+      - contract_id: curated_product_dim_v1
+        type: transformation
+      - contract_id: sem_product_analytics_v1
+        type: product
+
+  # ─────────────────────────────────────────────────────────────────────────
+  # CONSUMERS
+  # ─────────────────────────────────────────────────────────────────────────
+  consumers:
+    - team: Product Analytics
+      contact: product@company.com
+      use_case: Product performance analysis
+      access_level: read_full
+      
+    - team: Pricing
+      contact: pricing@company.com
+      use_case: Pricing optimization
+      access_level: read_full

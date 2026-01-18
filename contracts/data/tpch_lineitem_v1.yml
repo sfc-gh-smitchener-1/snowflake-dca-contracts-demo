@@ -1,0 +1,380 @@
+# ============================================================================
+# DATA CONTRACT: TPCH Line Item Data
+# ============================================================================
+# Producer: Demo Data Engineering Team
+# Source: Snowflake Sample TPCH Dataset
+# Updated: 2026-01-18
+# ============================================================================
+
+contract:
+  # ─────────────────────────────────────────────────────────────────────────
+  # IDENTITY & OWNERSHIP
+  # ─────────────────────────────────────────────────────────────────────────
+  id: tpch_lineitem_v1
+  version: 1.0.0
+  status: active
+  
+  producer:
+    system: SNOWFLAKE_SAMPLE_TPCH
+    team: Demo Data Engineering
+    owner: demo-team@company.com
+    slack_channel: "#demo-data-contracts"
+  
+  # ─────────────────────────────────────────────────────────────────────────
+  # SCHEMA DEFINITION
+  # ─────────────────────────────────────────────────────────────────────────
+  schema:
+    database: RAW_${ENV}
+    schema: RAW_TPCH
+    table: LINEITEM_RAW
+    
+    columns:
+      - name: L_ORDERKEY
+        type: NUMBER(38,0)
+        description: "Order key (part of composite primary key)"
+        constraints:
+          - not_null
+          - primary_key
+        tags:
+          DATA_CLASSIFICATION: INTERNAL
+          PII_TYPE: NONE
+          AI_ALLOWED: "TRUE"
+          
+      - name: L_PARTKEY
+        type: NUMBER(38,0)
+        description: "Part key (foreign key to part table)"
+        constraints:
+          - not_null
+          - foreign_key
+        tags:
+          DATA_CLASSIFICATION: INTERNAL
+          PII_TYPE: NONE
+          AI_ALLOWED: "TRUE"
+          
+      - name: L_SUPPKEY
+        type: NUMBER(38,0)
+        description: "Supplier key (foreign key to supplier table)"
+        constraints:
+          - not_null
+          - foreign_key
+        tags:
+          DATA_CLASSIFICATION: INTERNAL
+          PII_TYPE: NONE
+          AI_ALLOWED: "TRUE"
+          
+      - name: L_LINENUMBER
+        type: NUMBER(38,0)
+        description: "Line number within order (part of composite primary key)"
+        constraints:
+          - not_null
+          - primary_key
+        tags:
+          DATA_CLASSIFICATION: INTERNAL
+          PII_TYPE: NONE
+          AI_ALLOWED: "TRUE"
+          
+      - name: L_QUANTITY
+        type: NUMBER(12,2)
+        description: "Quantity ordered"
+        constraints:
+          - not_null
+        tests:
+          - type: range
+            min: 1
+            max: 50
+        tags:
+          DATA_CLASSIFICATION: INTERNAL
+          PII_TYPE: NONE
+          AI_ALLOWED: "TRUE"
+          
+      - name: L_EXTENDEDPRICE
+        type: NUMBER(12,2)
+        description: "Extended price (quantity * unit price)"
+        constraints:
+          - not_null
+        tests:
+          - type: range
+            min: 0
+        tags:
+          DATA_CLASSIFICATION: CONFIDENTIAL
+          PII_TYPE: NONE
+          AI_ALLOWED: "TRUE"
+          
+      - name: L_DISCOUNT
+        type: NUMBER(12,2)
+        description: "Discount percentage"
+        constraints:
+          - not_null
+        tests:
+          - type: range
+            min: 0
+            max: 0.10
+        tags:
+          DATA_CLASSIFICATION: INTERNAL
+          PII_TYPE: NONE
+          AI_ALLOWED: "TRUE"
+          
+      - name: L_TAX
+        type: NUMBER(12,2)
+        description: "Tax rate"
+        constraints:
+          - not_null
+        tests:
+          - type: range
+            min: 0
+            max: 0.08
+        tags:
+          DATA_CLASSIFICATION: INTERNAL
+          PII_TYPE: NONE
+          AI_ALLOWED: "TRUE"
+          
+      - name: L_RETURNFLAG
+        type: VARCHAR(1)
+        description: "Return flag (R=Returned, A=Accepted, N=None)"
+        constraints:
+          - not_null
+        tests:
+          - type: accepted_values
+            values: ["R", "A", "N"]
+        tags:
+          DATA_CLASSIFICATION: INTERNAL
+          PII_TYPE: NONE
+          AI_ALLOWED: "TRUE"
+          
+      - name: L_LINESTATUS
+        type: VARCHAR(1)
+        description: "Line status (O=Open, F=Fulfilled)"
+        constraints:
+          - not_null
+        tests:
+          - type: accepted_values
+            values: ["O", "F"]
+        tags:
+          DATA_CLASSIFICATION: INTERNAL
+          PII_TYPE: NONE
+          AI_ALLOWED: "TRUE"
+          
+      - name: L_SHIPDATE
+        type: DATE
+        description: "Ship date"
+        constraints:
+          - not_null
+        tags:
+          DATA_CLASSIFICATION: INTERNAL
+          PII_TYPE: NONE
+          AI_ALLOWED: "TRUE"
+          
+      - name: L_COMMITDATE
+        type: DATE
+        description: "Commit date (promised delivery date)"
+        constraints:
+          - not_null
+        tags:
+          DATA_CLASSIFICATION: INTERNAL
+          PII_TYPE: NONE
+          AI_ALLOWED: "TRUE"
+          
+      - name: L_RECEIPTDATE
+        type: DATE
+        description: "Receipt date (actual delivery date)"
+        constraints:
+          - not_null
+        tags:
+          DATA_CLASSIFICATION: INTERNAL
+          PII_TYPE: NONE
+          AI_ALLOWED: "TRUE"
+          
+      - name: L_SHIPINSTRUCT
+        type: VARCHAR(25)
+        description: "Shipping instructions"
+        constraints:
+          - not_null
+        tags:
+          DATA_CLASSIFICATION: INTERNAL
+          PII_TYPE: NONE
+          AI_ALLOWED: "TRUE"
+          
+      - name: L_SHIPMODE
+        type: VARCHAR(10)
+        description: "Shipping mode"
+        constraints:
+          - not_null
+        tests:
+          - type: accepted_values
+            values: ["AIR", "FOB", "MAIL", "RAIL", "REG AIR", "SHIP", "TRUCK"]
+        tags:
+          DATA_CLASSIFICATION: INTERNAL
+          PII_TYPE: NONE
+          AI_ALLOWED: "TRUE"
+          
+      - name: L_COMMENT
+        type: VARCHAR(44)
+        description: "Line item comments"
+        constraints: []
+        tags:
+          DATA_CLASSIFICATION: INTERNAL
+          PII_TYPE: NONE
+          AI_ALLOWED: "TRUE"
+          
+      # ── System Columns ──
+      - name: _LOADED_AT
+        type: TIMESTAMP_NTZ
+        description: "Snowflake ingestion timestamp"
+        constraints:
+          - not_null
+        system_managed: true
+        
+      - name: _SOURCE_FILE
+        type: VARCHAR(1024)
+        description: "Source file or batch identifier"
+        system_managed: true
+        
+      - name: _ROW_HASH
+        type: VARCHAR(64)
+        description: "SHA256 hash of business columns for change detection"
+        system_managed: true
+        
+      - name: _IS_CURRENT
+        type: BOOLEAN
+        description: "Flag indicating if this is the current record version"
+        system_managed: true
+
+  # ─────────────────────────────────────────────────────────────────────────
+  # SERVICE LEVEL AGREEMENTS
+  # ─────────────────────────────────────────────────────────────────────────
+  sla:
+    freshness:
+      max_age_minutes: 30
+      measurement: "MAX(_LOADED_AT) vs CURRENT_TIMESTAMP()"
+      
+    completeness:
+      threshold_percent: 99.9
+      critical_columns:
+        - L_ORDERKEY
+        - L_LINENUMBER
+        - L_EXTENDEDPRICE
+        
+    availability:
+      uptime_percent: 99.9
+      maintenance_window: "Sunday 02:00-04:00 UTC"
+      
+    volume:
+      expected_daily_rows:
+        min: 5000000
+        max: 10000000
+      alert_on_variance_percent: 20
+
+  # ─────────────────────────────────────────────────────────────────────────
+  # QUALITY RULES
+  # ─────────────────────────────────────────────────────────────────────────
+  quality_rules:
+    - id: qr_001
+      name: valid_orderkey
+      type: column_check
+      column: L_ORDERKEY
+      sql: "L_ORDERKEY > 0"
+      severity: error
+      
+    - id: qr_002
+      name: valid_composite_pk
+      type: table_check
+      sql: "COUNT(*) = COUNT(DISTINCT CONCAT(L_ORDERKEY, '-', L_LINENUMBER))"
+      severity: error
+      
+    - id: qr_003
+      name: positive_quantity
+      type: column_check
+      column: L_QUANTITY
+      sql: "L_QUANTITY > 0"
+      severity: error
+      
+    - id: qr_004
+      name: positive_price
+      type: column_check
+      column: L_EXTENDEDPRICE
+      sql: "L_EXTENDEDPRICE >= 0"
+      severity: error
+      
+    - id: qr_005
+      name: valid_discount_range
+      type: column_check
+      column: L_DISCOUNT
+      sql: "L_DISCOUNT BETWEEN 0 AND 0.10"
+      severity: warning
+      
+    - id: qr_006
+      name: valid_tax_range
+      type: column_check
+      column: L_TAX
+      sql: "L_TAX BETWEEN 0 AND 0.08"
+      severity: warning
+      
+    - id: qr_007
+      name: ship_date_logical
+      type: table_check
+      sql: "COUNT(CASE WHEN L_SHIPDATE > L_RECEIPTDATE THEN 1 END) = 0"
+      severity: warning
+      
+    - id: qr_008
+      name: valid_order_reference
+      type: cross_table_check
+      sql: |
+        SELECT COUNT(*) = 0 FROM RAW_${ENV}.RAW_TPCH.LINEITEM_RAW l
+        WHERE _IS_CURRENT = TRUE
+        AND NOT EXISTS (
+          SELECT 1 FROM RAW_${ENV}.RAW_TPCH.ORDERS_RAW o 
+          WHERE o.O_ORDERKEY = l.L_ORDERKEY AND o._IS_CURRENT = TRUE
+        )
+      severity: error
+
+  # ─────────────────────────────────────────────────────────────────────────
+  # GOVERNANCE & COMPLIANCE
+  # ─────────────────────────────────────────────────────────────────────────
+  governance:
+    classification: CONFIDENTIAL
+    residency_requirements:
+      - "Transaction data must follow regional financial data policies"
+    retention_days: 2555  # 7 years for financial records
+    ai_eligibility: "TRUE"
+    
+  # ─────────────────────────────────────────────────────────────────────────
+  # LINEAGE & DEPENDENCIES
+  # ─────────────────────────────────────────────────────────────────────────
+  lineage:
+    source_systems:
+      - name: Snowflake Sample Data TPCH
+        connection: SNOWFLAKE_SAMPLE_DATA.TPCH_SF1
+        extraction: DIRECT_LOAD
+        
+    upstream_dependencies:
+      - contract_id: tpch_orders_v1
+        type: reference
+      - contract_id: tpch_part_v1
+        type: reference
+      - contract_id: tpch_supplier_v1
+        type: reference
+        
+    downstream_dependencies:
+      - contract_id: curated_lineitem_fact_v1
+        type: transformation
+      - contract_id: sem_sales_analytics_v1
+        type: product
+
+  # ─────────────────────────────────────────────────────────────────────────
+  # CONSUMERS
+  # ─────────────────────────────────────────────────────────────────────────
+  consumers:
+    - team: Analytics Platform
+      contact: analytics@company.com
+      use_case: Sales analysis and product performance
+      access_level: read_full
+      
+    - team: Finance
+      contact: finance-data@company.com  
+      use_case: Revenue recognition and margin analysis
+      access_level: read_full
+      
+    - team: Supply Chain
+      contact: supply-chain@company.com
+      use_case: Inventory and shipping analytics
+      access_level: read_full

@@ -1,0 +1,323 @@
+# ============================================================================
+# CORTEX ANALYST SEMANTIC MODEL: Supplier Analytics
+# ============================================================================
+# This semantic model enables natural language queries on supplier performance,
+# quality metrics, and delivery analytics through Cortex Analyst.
+# Designed for procurement AI and vendor management use cases.
+# ============================================================================
+
+name: supplier_analytics
+description: |
+  Supplier analytics semantic model for procurement AI and vendor management.
+  Includes performance scores, quality metrics, delivery analytics, and inventory.
+  No PII present - safe for all AI/ML workloads.
+
+version: 1.0.0
+owner: demo-team@company.com
+
+# ─────────────────────────────────────────────────────────────────────────────
+# DATABASE CONFIGURATION
+# ─────────────────────────────────────────────────────────────────────────────
+database: SEM_DEV
+schema: SEM_SALES
+
+# ─────────────────────────────────────────────────────────────────────────────
+# TABLES
+# ─────────────────────────────────────────────────────────────────────────────
+tables:
+  - name: VW_SUPPLIER_ANALYTICS
+    description: Supplier performance and quality analytics view
+    base_table: SEM_DEV.SEM_SALES.VW_SUPPLIER_ANALYTICS
+    
+    # Dimensions
+    dimensions:
+      - name: supplier_name
+        synonyms:
+          - supplier
+          - vendor
+          - vendor name
+        description: Name of the supplier
+        expr: SUPPLIER_NAME
+        data_type: VARCHAR
+        
+      - name: supplier_tier
+        synonyms:
+          - tier
+          - vendor tier
+        description: Supplier tier classification
+        expr: SUPPLIER_TIER
+        data_type: VARCHAR
+        
+      - name: nation
+        synonyms:
+          - country
+          - supplier country
+        description: Supplier's nation/country
+        expr: NATION_NAME
+        data_type: VARCHAR
+        
+      - name: region
+        synonyms:
+          - supplier region
+          - geographic region
+        description: Geographic region (AFRICA, AMERICA, ASIA, EUROPE, MIDDLE EAST)
+        expr: REGION_NAME
+        data_type: VARCHAR
+        
+      - name: region_group
+        synonyms:
+          - territory
+        description: Simplified region grouping (AMER, EMEA, APAC)
+        expr: REGION_GROUP
+        data_type: VARCHAR
+        
+      - name: supplier_category
+        synonyms:
+          - category
+          - vendor category
+          - classification
+        description: Supplier strategic category (PREFERRED, STRATEGIC, STANDARD, TRANSACTIONAL, INACTIVE)
+        expr: SUPPLIER_CATEGORY
+        data_type: VARCHAR
+
+    # Measures
+    measures:
+      - name: supplier_count
+        synonyms:
+          - suppliers
+          - number of suppliers
+          - total suppliers
+          - vendors
+        description: Count of unique suppliers
+        expr: COUNT(DISTINCT SUPPLIER_KEY)
+        data_type: NUMBER
+        default_aggregation: count_distinct
+        
+      - name: order_count
+        synonyms:
+          - orders
+          - number of orders
+        description: Total orders from suppliers
+        expr: SUM(ORDER_COUNT)
+        data_type: NUMBER
+        default_aggregation: sum
+        
+      - name: line_item_count
+        synonyms:
+          - line items
+          - items
+        description: Total line items from suppliers
+        expr: SUM(LINE_ITEM_COUNT)
+        data_type: NUMBER
+        default_aggregation: sum
+        
+      - name: total_quantity_sold
+        synonyms:
+          - units sold
+          - quantity
+          - volume
+        description: Total quantity sold by suppliers
+        expr: SUM(TOTAL_QUANTITY_SOLD)
+        data_type: NUMBER
+        default_aggregation: sum
+        
+      - name: gross_revenue
+        synonyms:
+          - revenue
+          - sales
+          - total revenue
+        description: Total gross revenue from suppliers
+        expr: SUM(GROSS_REVENUE)
+        data_type: NUMBER
+        default_aggregation: sum
+        
+      - name: net_revenue
+        synonyms:
+          - net sales
+          - revenue after discount
+        description: Net revenue after discounts
+        expr: SUM(NET_REVENUE)
+        data_type: NUMBER
+        default_aggregation: sum
+        
+      - name: return_count
+        synonyms:
+          - returns
+          - returned items
+        description: Number of returned items
+        expr: SUM(RETURN_COUNT)
+        data_type: NUMBER
+        default_aggregation: sum
+        
+      - name: average_return_rate
+        synonyms:
+          - return rate
+          - return percentage
+        description: Average return rate percentage
+        expr: AVG(RETURN_RATE_PCT)
+        data_type: NUMBER
+        default_aggregation: avg
+        
+      - name: late_deliveries
+        synonyms:
+          - late delivery count
+          - delayed shipments
+        description: Number of late deliveries
+        expr: SUM(LATE_DELIVERIES)
+        data_type: NUMBER
+        default_aggregation: sum
+        
+      - name: average_late_delivery_rate
+        synonyms:
+          - late delivery rate
+          - delay rate
+        description: Average late delivery rate percentage
+        expr: AVG(LATE_DELIVERY_RATE_PCT)
+        data_type: NUMBER
+        default_aggregation: avg
+        
+      - name: average_delivery_days
+        synonyms:
+          - delivery time
+          - lead time
+          - shipping time
+        description: Average delivery time in days
+        expr: AVG(AVG_DELIVERY_DAYS)
+        data_type: NUMBER
+        default_aggregation: avg
+        
+      - name: parts_supplied
+        synonyms:
+          - products
+          - skus
+          - parts
+        description: Number of unique parts/products supplied
+        expr: SUM(PARTS_SUPPLIED)
+        data_type: NUMBER
+        default_aggregation: sum
+        
+      - name: total_inventory
+        synonyms:
+          - inventory
+          - stock
+        description: Total inventory held by suppliers
+        expr: SUM(TOTAL_INVENTORY)
+        data_type: NUMBER
+        default_aggregation: sum
+        
+      - name: total_inventory_value
+        synonyms:
+          - inventory value
+          - stock value
+        description: Total inventory value
+        expr: SUM(INVENTORY_VALUE)
+        data_type: NUMBER
+        default_aggregation: sum
+        
+      - name: average_supplier_score
+        synonyms:
+          - score
+          - vendor score
+          - performance score
+        description: Average supplier performance score (0-100)
+        expr: AVG(SUPPLIER_SCORE)
+        data_type: NUMBER
+        default_aggregation: avg
+        
+      - name: total_account_balance
+        synonyms:
+          - balance
+          - account balance
+        description: Total account balance across suppliers
+        expr: SUM(ACCOUNT_BALANCE)
+        data_type: NUMBER
+        default_aggregation: sum
+
+# ─────────────────────────────────────────────────────────────────────────────
+# SAMPLE QUESTIONS FOR TRAINING
+# ─────────────────────────────────────────────────────────────────────────────
+sample_questions:
+  - question: "Which suppliers have the best on-time delivery rate?"
+    sql: |
+      SELECT SUPPLIER_NAME, 
+             SUPPLIER_CATEGORY,
+             LATE_DELIVERY_RATE_PCT,
+             100 - LATE_DELIVERY_RATE_PCT as on_time_rate,
+             NET_REVENUE
+      FROM SEM_DEV.SEM_SALES.VW_SUPPLIER_ANALYTICS
+      WHERE LINE_ITEM_COUNT > 0
+      ORDER BY LATE_DELIVERY_RATE_PCT ASC
+      LIMIT 10
+      
+  - question: "Show me preferred suppliers"
+    sql: |
+      SELECT SUPPLIER_NAME, REGION_NAME, NET_REVENUE, SUPPLIER_SCORE, RETURN_RATE_PCT, LATE_DELIVERY_RATE_PCT
+      FROM SEM_DEV.SEM_SALES.VW_SUPPLIER_ANALYTICS
+      WHERE SUPPLIER_CATEGORY = 'PREFERRED'
+      ORDER BY NET_REVENUE DESC
+      
+  - question: "What is revenue by supplier region?"
+    sql: |
+      SELECT REGION_NAME,
+             COUNT(DISTINCT SUPPLIER_KEY) as suppliers,
+             SUM(NET_REVENUE) as total_revenue,
+             AVG(SUPPLIER_SCORE) as avg_score
+      FROM SEM_DEV.SEM_SALES.VW_SUPPLIER_ANALYTICS
+      GROUP BY REGION_NAME
+      ORDER BY total_revenue DESC
+      
+  - question: "Which suppliers have the highest return rates?"
+    sql: |
+      SELECT SUPPLIER_NAME, 
+             SUPPLIER_CATEGORY,
+             RETURN_COUNT,
+             RETURN_RATE_PCT,
+             NET_REVENUE
+      FROM SEM_DEV.SEM_SALES.VW_SUPPLIER_ANALYTICS
+      WHERE RETURN_COUNT > 0
+      ORDER BY RETURN_RATE_PCT DESC
+      LIMIT 10
+      
+  - question: "Show me supplier performance scores by category"
+    sql: |
+      SELECT SUPPLIER_CATEGORY,
+             COUNT(DISTINCT SUPPLIER_KEY) as suppliers,
+             AVG(SUPPLIER_SCORE) as avg_score,
+             SUM(NET_REVENUE) as total_revenue
+      FROM SEM_DEV.SEM_SALES.VW_SUPPLIER_ANALYTICS
+      GROUP BY SUPPLIER_CATEGORY
+      ORDER BY avg_score DESC
+      
+  - question: "How many inactive suppliers do we have?"
+    sql: |
+      SELECT COUNT(*) as inactive_suppliers
+      FROM SEM_DEV.SEM_SALES.VW_SUPPLIER_ANALYTICS
+      WHERE SUPPLIER_CATEGORY = 'INACTIVE'
+
+# ─────────────────────────────────────────────────────────────────────────────
+# FILTERS (Common WHERE clauses)
+# ─────────────────────────────────────────────────────────────────────────────
+filters:
+  - name: active_suppliers
+    description: Only active suppliers (not inactive)
+    expr: SUPPLIER_CATEGORY != 'INACTIVE'
+    
+  - name: preferred_suppliers
+    description: Preferred tier suppliers
+    expr: SUPPLIER_CATEGORY = 'PREFERRED'
+    
+  - name: strategic_suppliers
+    description: Strategic tier suppliers
+    expr: SUPPLIER_CATEGORY = 'STRATEGIC'
+    
+  - name: high_performers
+    description: Suppliers with score above 70
+    expr: SUPPLIER_SCORE >= 70
+    
+  - name: quality_issues
+    description: Suppliers with return rate above 5%
+    expr: RETURN_RATE_PCT > 5
+    
+  - name: delivery_issues
+    description: Suppliers with late delivery rate above 10%
+    expr: LATE_DELIVERY_RATE_PCT > 10

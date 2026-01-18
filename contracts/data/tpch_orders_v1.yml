@@ -1,0 +1,285 @@
+# ============================================================================
+# DATA CONTRACT: TPCH Orders Data
+# ============================================================================
+# Producer: Demo Data Engineering Team
+# Source: Snowflake Sample TPCH Dataset
+# Updated: 2026-01-18
+# ============================================================================
+
+contract:
+  # ─────────────────────────────────────────────────────────────────────────
+  # IDENTITY & OWNERSHIP
+  # ─────────────────────────────────────────────────────────────────────────
+  id: tpch_orders_v1
+  version: 1.0.0
+  status: active
+  
+  producer:
+    system: SNOWFLAKE_SAMPLE_TPCH
+    team: Demo Data Engineering
+    owner: demo-team@company.com
+    slack_channel: "#demo-data-contracts"
+  
+  # ─────────────────────────────────────────────────────────────────────────
+  # SCHEMA DEFINITION
+  # ─────────────────────────────────────────────────────────────────────────
+  schema:
+    database: RAW_${ENV}
+    schema: RAW_TPCH
+    table: ORDERS_RAW
+    
+    columns:
+      - name: O_ORDERKEY
+        type: NUMBER(38,0)
+        description: "Unique order identifier (primary key)"
+        constraints:
+          - not_null
+          - unique
+          - primary_key
+        tags:
+          DATA_CLASSIFICATION: INTERNAL
+          PII_TYPE: NONE
+          AI_ALLOWED: "TRUE"
+          
+      - name: O_CUSTKEY
+        type: NUMBER(38,0)
+        description: "Foreign key to customer table"
+        constraints:
+          - not_null
+          - foreign_key
+        tags:
+          DATA_CLASSIFICATION: INTERNAL
+          PII_TYPE: NONE
+          AI_ALLOWED: "TRUE"
+          
+      - name: O_ORDERSTATUS
+        type: VARCHAR(1)
+        description: "Order status (O=Open, F=Fulfilled, P=Pending)"
+        constraints:
+          - not_null
+        tests:
+          - type: accepted_values
+            values: ["O", "F", "P"]
+        tags:
+          DATA_CLASSIFICATION: INTERNAL
+          PII_TYPE: NONE
+          AI_ALLOWED: "TRUE"
+          
+      - name: O_TOTALPRICE
+        type: NUMBER(12,2)
+        description: "Total order price"
+        constraints:
+          - not_null
+        tests:
+          - type: range
+            min: 0
+        tags:
+          DATA_CLASSIFICATION: CONFIDENTIAL
+          PII_TYPE: NONE
+          AI_ALLOWED: "TRUE"
+          
+      - name: O_ORDERDATE
+        type: DATE
+        description: "Order date"
+        constraints:
+          - not_null
+        tags:
+          DATA_CLASSIFICATION: INTERNAL
+          PII_TYPE: NONE
+          AI_ALLOWED: "TRUE"
+          
+      - name: O_ORDERPRIORITY
+        type: VARCHAR(15)
+        description: "Order priority level"
+        constraints:
+          - not_null
+        tests:
+          - type: accepted_values
+            values: ["1-URGENT", "2-HIGH", "3-MEDIUM", "4-NOT SPECIFIED", "5-LOW"]
+        tags:
+          DATA_CLASSIFICATION: INTERNAL
+          PII_TYPE: NONE
+          AI_ALLOWED: "TRUE"
+          
+      - name: O_CLERK
+        type: VARCHAR(15)
+        description: "Clerk identifier who processed the order"
+        constraints:
+          - not_null
+        tags:
+          DATA_CLASSIFICATION: INTERNAL
+          PII_TYPE: LOW
+          AI_ALLOWED: "TRUE"
+          
+      - name: O_SHIPPRIORITY
+        type: NUMBER(38,0)
+        description: "Shipping priority"
+        constraints:
+          - not_null
+        tags:
+          DATA_CLASSIFICATION: INTERNAL
+          PII_TYPE: NONE
+          AI_ALLOWED: "TRUE"
+          
+      - name: O_COMMENT
+        type: VARCHAR(79)
+        description: "Free-form order comments"
+        constraints: []
+        tags:
+          DATA_CLASSIFICATION: INTERNAL
+          PII_TYPE: NONE
+          AI_ALLOWED: "TRUE"
+          
+      # ── System Columns ──
+      - name: _LOADED_AT
+        type: TIMESTAMP_NTZ
+        description: "Snowflake ingestion timestamp"
+        constraints:
+          - not_null
+        system_managed: true
+        
+      - name: _SOURCE_FILE
+        type: VARCHAR(1024)
+        description: "Source file or batch identifier"
+        system_managed: true
+        
+      - name: _ROW_HASH
+        type: VARCHAR(64)
+        description: "SHA256 hash of business columns for change detection"
+        system_managed: true
+        
+      - name: _IS_CURRENT
+        type: BOOLEAN
+        description: "Flag indicating if this is the current record version"
+        system_managed: true
+
+  # ─────────────────────────────────────────────────────────────────────────
+  # SERVICE LEVEL AGREEMENTS
+  # ─────────────────────────────────────────────────────────────────────────
+  sla:
+    freshness:
+      max_age_minutes: 30
+      measurement: "MAX(_LOADED_AT) vs CURRENT_TIMESTAMP()"
+      
+    completeness:
+      threshold_percent: 99.9
+      critical_columns:
+        - O_ORDERKEY
+        - O_CUSTKEY
+        - O_TOTALPRICE
+        - O_ORDERDATE
+        
+    availability:
+      uptime_percent: 99.9
+      maintenance_window: "Sunday 02:00-04:00 UTC"
+      
+    volume:
+      expected_daily_rows:
+        min: 1000000
+        max: 2000000
+      alert_on_variance_percent: 20
+
+  # ─────────────────────────────────────────────────────────────────────────
+  # QUALITY RULES
+  # ─────────────────────────────────────────────────────────────────────────
+  quality_rules:
+    - id: qr_001
+      name: valid_orderkey
+      type: column_check
+      column: O_ORDERKEY
+      sql: "O_ORDERKEY > 0"
+      severity: error
+      
+    - id: qr_002
+      name: no_duplicate_orders
+      type: table_check
+      sql: "COUNT(*) = COUNT(DISTINCT O_ORDERKEY) OR SUM(CASE WHEN _IS_CURRENT THEN 1 ELSE 0 END) = COUNT(DISTINCT O_ORDERKEY)"
+      severity: error
+      
+    - id: qr_003
+      name: valid_order_status
+      type: column_check
+      column: O_ORDERSTATUS
+      sql: "O_ORDERSTATUS IN ('O', 'F', 'P')"
+      severity: error
+      
+    - id: qr_004
+      name: positive_price
+      type: column_check
+      column: O_TOTALPRICE
+      sql: "O_TOTALPRICE >= 0"
+      severity: error
+      
+    - id: qr_005
+      name: valid_priority
+      type: column_check
+      column: O_ORDERPRIORITY
+      sql: "O_ORDERPRIORITY IN ('1-URGENT', '2-HIGH', '3-MEDIUM', '4-NOT SPECIFIED', '5-LOW')"
+      severity: error
+      
+    - id: qr_006
+      name: order_date_not_future
+      type: column_check
+      column: O_ORDERDATE
+      sql: "O_ORDERDATE <= CURRENT_DATE()"
+      severity: warning
+      
+    - id: qr_007
+      name: valid_customer_reference
+      type: cross_table_check
+      sql: |
+        SELECT COUNT(*) = 0 FROM RAW_${ENV}.RAW_TPCH.ORDERS_RAW o
+        WHERE _IS_CURRENT = TRUE
+        AND NOT EXISTS (
+          SELECT 1 FROM RAW_${ENV}.RAW_TPCH.CUSTOMER_RAW c 
+          WHERE c.C_CUSTKEY = o.O_CUSTKEY AND c._IS_CURRENT = TRUE
+        )
+      severity: error
+
+  # ─────────────────────────────────────────────────────────────────────────
+  # GOVERNANCE & COMPLIANCE
+  # ─────────────────────────────────────────────────────────────────────────
+  governance:
+    classification: CONFIDENTIAL
+    residency_requirements:
+      - "Order financial data must follow regional data governance policies"
+    retention_days: 2555  # 7 years for financial records
+    ai_eligibility: "TRUE"
+    
+  # ─────────────────────────────────────────────────────────────────────────
+  # LINEAGE & DEPENDENCIES
+  # ─────────────────────────────────────────────────────────────────────────
+  lineage:
+    source_systems:
+      - name: Snowflake Sample Data TPCH
+        connection: SNOWFLAKE_SAMPLE_DATA.TPCH_SF1
+        extraction: DIRECT_LOAD
+        
+    upstream_dependencies:
+      - contract_id: tpch_customer_v1
+        type: reference
+        
+    downstream_dependencies:
+      - contract_id: curated_orders_fact_v1
+        type: transformation
+      - contract_id: sem_sales_analytics_v1
+        type: product
+
+  # ─────────────────────────────────────────────────────────────────────────
+  # CONSUMERS
+  # ─────────────────────────────────────────────────────────────────────────
+  consumers:
+    - team: Analytics Platform
+      contact: analytics@company.com
+      use_case: Sales analysis and revenue reporting
+      access_level: read_full
+      
+    - team: Finance
+      contact: finance-data@company.com  
+      use_case: Revenue recognition and financial reporting
+      access_level: read_full
+      
+    - team: Operations
+      contact: ops-data@company.com
+      use_case: Order fulfillment monitoring
+      access_level: read_full

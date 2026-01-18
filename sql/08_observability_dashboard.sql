@@ -1,0 +1,517 @@
+-- ============================================================================
+-- CONTRACT OBSERVABILITY DASHBOARD
+-- ============================================================================
+-- This script creates views and tables for the observability dashboard:
+--   1. Contract health overview
+--   2. SLA compliance trending
+--   3. Quality metrics
+--   4. Lineage tracking
+--   5. Alert management
+-- ============================================================================
+
+USE ROLE ACCOUNTADMIN;
+USE DATABASE GOVERNANCE;
+USE WAREHOUSE ANALYTICS_WH;
+
+-- ─────────────────────────────────────────────────────────────────────────────
+-- OBSERVABILITY SCHEMA SETUP
+-- ─────────────────────────────────────────────────────────────────────────────
+
+CREATE SCHEMA IF NOT EXISTS GOVERNANCE.OBSERVABILITY;
+
+-- ─────────────────────────────────────────────────────────────────────────────
+-- VIEW: Contract Health Dashboard (Main Overview)
+-- ─────────────────────────────────────────────────────────────────────────────
+
+CREATE OR REPLACE VIEW GOVERNANCE.OBSERVABILITY.VW_CONTRACT_HEALTH_DASHBOARD AS
+WITH latest_metrics AS (
+    SELECT 
+        CONTRACT_ID,
+        MAX(MEASURED_AT) AS LAST_CHECK
+    FROM GOVERNANCE.CONTRACT_REGISTRY.SLA_METRICS
+    GROUP BY CONTRACT_ID
+),
+quality_stats AS (
+    SELECT 
+        CONTRACT_ID,
+        COUNT(CASE WHEN PASSED THEN 1 END) AS RULES_PASSED,
+        COUNT(*) AS RULES_TOTAL,
+        COUNT(CASE WHEN PASSED THEN 1 END)::FLOAT / NULLIF(COUNT(*), 0) * 100 AS QUALITY_SCORE
+    FROM GOVERNANCE.CONTRACT_REGISTRY.QUALITY_RULE_RESULTS
+    WHERE EXECUTION_TIME > DATEADD('hour', -24, CURRENT_TIMESTAMP())
+    GROUP BY CONTRACT_ID
+),
+freshness_status AS (
+    SELECT 
+        sm.CONTRACT_ID,
+        sm.MEASURED_VALUE AS CURRENT_AGE_MINUTES,
+        sm.THRESHOLD_VALUE AS MAX_AGE_MINUTES,
+        sm.IS_VIOLATION,
+        CASE 
+            WHEN sm.IS_VIOLATION THEN 'VIOLATION'
+            WHEN sm.MEASURED_VALUE > sm.THRESHOLD_VALUE * 0.8 THEN 'WARNING'
+            ELSE 'OK'
+        END AS FRESHNESS_STATUS
+    FROM GOVERNANCE.CONTRACT_REGISTRY.SLA_METRICS sm
+    JOIN latest_metrics lm 
+        ON sm.CONTRACT_ID = lm.CONTRACT_ID 
+        AND sm.MEASURED_AT = lm.LAST_CHECK
+    WHERE sm.SLA_ID = 'freshness'
+),
+consumer_counts AS (
+    SELECT 
+        CONTRACT_ID,
+        COUNT(*) AS CONSUMER_COUNT
+    FROM GOVERNANCE.CONTRACT_REGISTRY.CONTRACT_CONSUMERS
+    GROUP BY CONTRACT_ID
+)
+SELECT
+    c.CONTRACT_ID,
+    c.CONTRACT_TYPE,
+    c.VERSION,
+    c.STATUS,
+    c.PRODUCER_TEAM,
+    c.PRODUCER_EMAIL,
+    
+    -- Health Scores
+    COALESCE(qs.QUALITY_SCORE, 100) AS QUALITY_SCORE,
+    qs.RULES_PASSED,
+    qs.RULES_TOTAL,
+    
+    -- Freshness
+    fs.CURRENT_AGE_MINUTES,
+    fs.MAX_AGE_MINUTES,
+    fs.FRESHNESS_STATUS,
+    
+    -- Consumers
+    COALESCE(cc.CONSUMER_COUNT, 0) AS CONSUMER_COUNT,
+    
+    -- Overall Health
+    CASE 
+        WHEN fs.FRESHNESS_STATUS = 'VIOLATION' THEN 'CRITICAL'
+        WHEN fs.FRESHNESS_STATUS = 'WARNING' OR COALESCE(qs.QUALITY_SCORE, 100) < 90 THEN 'WARNING'
+        ELSE 'HEALTHY'
+    END AS OVERALL_HEALTH,
+    
+    -- Overall Score
+    (COALESCE(qs.QUALITY_SCORE, 100) * 0.5 + 
+     IFF(fs.FRESHNESS_STATUS = 'OK', 100, IFF(fs.FRESHNESS_STATUS = 'WARNING', 70, 0)) * 0.5
+    ) AS OVERALL_SCORE,
+    
+    -- Timestamps
+    c.CREATED_AT,
+    c.UPDATED_AT,
+    lm.LAST_CHECK AS LAST_VALIDATED
+    
+FROM GOVERNANCE.CONTRACT_REGISTRY.CONTRACTS c
+LEFT JOIN latest_metrics lm ON c.CONTRACT_ID = lm.CONTRACT_ID
+LEFT JOIN quality_stats qs ON c.CONTRACT_ID = qs.CONTRACT_ID
+LEFT JOIN freshness_status fs ON c.CONTRACT_ID = fs.CONTRACT_ID
+LEFT JOIN consumer_counts cc ON c.CONTRACT_ID = cc.CONTRACT_ID
+WHERE c.STATUS = 'active';
+
+-- ─────────────────────────────────────────────────────────────────────────────
+-- VIEW: SLA Compliance Trending
+-- ─────────────────────────────────────────────────────────────────────────────
+
+CREATE OR REPLACE VIEW GOVERNANCE.OBSERVABILITY.VW_SLA_COMPLIANCE_TREND AS
+SELECT
+    DATE_TRUNC('hour', MEASURED_AT) AS HOUR,
+    CONTRACT_ID,
+    SLA_ID,
+    AVG(MEASURED_VALUE) AS AVG_MEASURED_VALUE,
+    AVG(THRESHOLD_VALUE) AS THRESHOLD,
+    COUNT(CASE WHEN IS_VIOLATION THEN 1 END) AS VIOLATION_COUNT,
+    COUNT(*) AS CHECK_COUNT,
+    COUNT(CASE WHEN NOT IS_VIOLATION THEN 1 END)::FLOAT / NULLIF(COUNT(*), 0) * 100 AS COMPLIANCE_RATE
+FROM GOVERNANCE.CONTRACT_REGISTRY.SLA_METRICS
+WHERE MEASURED_AT > DATEADD('day', -7, CURRENT_TIMESTAMP())
+GROUP BY DATE_TRUNC('hour', MEASURED_AT), CONTRACT_ID, SLA_ID
+ORDER BY HOUR DESC, CONTRACT_ID;
+
+-- ─────────────────────────────────────────────────────────────────────────────
+-- VIEW: Quality Rule Results Detail
+-- ─────────────────────────────────────────────────────────────────────────────
+
+CREATE OR REPLACE VIEW GOVERNANCE.OBSERVABILITY.VW_QUALITY_RULE_RESULTS AS
+SELECT
+    qrr.RESULT_ID,
+    qrr.CONTRACT_ID,
+    c.PRODUCER_TEAM,
+    qrr.RULE_ID,
+    qrr.RESULT_VALUE:rule_name::VARCHAR AS RULE_NAME,
+    qrr.RESULT_VALUE:severity::VARCHAR AS SEVERITY,
+    qrr.PASSED,
+    CASE 
+        WHEN qrr.PASSED THEN 'PASSED'
+        WHEN qrr.RESULT_VALUE:severity::VARCHAR = 'error' THEN 'FAILED_ERROR'
+        ELSE 'FAILED_WARNING'
+    END AS RESULT_STATUS,
+    qrr.ERROR_MESSAGE,
+    qrr.ROWS_CHECKED,
+    qrr.ROWS_FAILED,
+    qrr.EXECUTION_TIME
+FROM GOVERNANCE.CONTRACT_REGISTRY.QUALITY_RULE_RESULTS qrr
+LEFT JOIN GOVERNANCE.CONTRACT_REGISTRY.CONTRACTS c 
+    ON qrr.CONTRACT_ID = c.CONTRACT_ID AND c.STATUS = 'active'
+WHERE qrr.EXECUTION_TIME > DATEADD('day', -7, CURRENT_TIMESTAMP())
+ORDER BY qrr.EXECUTION_TIME DESC;
+
+-- ─────────────────────────────────────────────────────────────────────────────
+-- VIEW: Quality Score by Contract Over Time
+-- ─────────────────────────────────────────────────────────────────────────────
+
+CREATE OR REPLACE VIEW GOVERNANCE.OBSERVABILITY.VW_QUALITY_SCORE_TREND AS
+SELECT
+    DATE_TRUNC('hour', EXECUTION_TIME) AS HOUR,
+    CONTRACT_ID,
+    COUNT(CASE WHEN PASSED THEN 1 END) AS RULES_PASSED,
+    COUNT(*) AS RULES_CHECKED,
+    COUNT(CASE WHEN PASSED THEN 1 END)::FLOAT / NULLIF(COUNT(*), 0) * 100 AS QUALITY_SCORE,
+    COUNT(CASE WHEN NOT PASSED AND RESULT_VALUE:severity::VARCHAR = 'error' THEN 1 END) AS ERROR_COUNT,
+    COUNT(CASE WHEN NOT PASSED AND RESULT_VALUE:severity::VARCHAR = 'warning' THEN 1 END) AS WARNING_COUNT
+FROM GOVERNANCE.CONTRACT_REGISTRY.QUALITY_RULE_RESULTS
+WHERE EXECUTION_TIME > DATEADD('day', -30, CURRENT_TIMESTAMP())
+GROUP BY DATE_TRUNC('hour', EXECUTION_TIME), CONTRACT_ID
+ORDER BY HOUR DESC, CONTRACT_ID;
+
+-- ─────────────────────────────────────────────────────────────────────────────
+-- VIEW: Contract Summary Statistics
+-- ─────────────────────────────────────────────────────────────────────────────
+
+CREATE OR REPLACE VIEW GOVERNANCE.OBSERVABILITY.VW_CONTRACT_SUMMARY_STATS AS
+SELECT
+    -- Total Counts
+    COUNT(*) AS TOTAL_CONTRACTS,
+    COUNT(CASE WHEN STATUS = 'active' THEN 1 END) AS ACTIVE_CONTRACTS,
+    COUNT(CASE WHEN STATUS = 'draft' THEN 1 END) AS DRAFT_CONTRACTS,
+    COUNT(CASE WHEN STATUS = 'deprecated' THEN 1 END) AS DEPRECATED_CONTRACTS,
+    
+    -- By Type
+    COUNT(CASE WHEN CONTRACT_TYPE = 'data' THEN 1 END) AS DATA_CONTRACTS,
+    COUNT(CASE WHEN CONTRACT_TYPE = 'product' THEN 1 END) AS PRODUCT_CONTRACTS,
+    
+    -- Health Summary (from active contracts)
+    (SELECT COUNT(*) FROM GOVERNANCE.OBSERVABILITY.VW_CONTRACT_HEALTH_DASHBOARD 
+     WHERE OVERALL_HEALTH = 'HEALTHY') AS HEALTHY_CONTRACTS,
+    (SELECT COUNT(*) FROM GOVERNANCE.OBSERVABILITY.VW_CONTRACT_HEALTH_DASHBOARD 
+     WHERE OVERALL_HEALTH = 'WARNING') AS WARNING_CONTRACTS,
+    (SELECT COUNT(*) FROM GOVERNANCE.OBSERVABILITY.VW_CONTRACT_HEALTH_DASHBOARD 
+     WHERE OVERALL_HEALTH = 'CRITICAL') AS CRITICAL_CONTRACTS,
+    
+    -- Average Scores
+    (SELECT AVG(OVERALL_SCORE) FROM GOVERNANCE.OBSERVABILITY.VW_CONTRACT_HEALTH_DASHBOARD) AS AVG_OVERALL_SCORE,
+    (SELECT AVG(QUALITY_SCORE) FROM GOVERNANCE.OBSERVABILITY.VW_CONTRACT_HEALTH_DASHBOARD) AS AVG_QUALITY_SCORE,
+    
+    -- Consumer Stats
+    (SELECT SUM(CONSUMER_COUNT) FROM GOVERNANCE.OBSERVABILITY.VW_CONTRACT_HEALTH_DASHBOARD) AS TOTAL_CONSUMER_REGISTRATIONS,
+    
+    -- Timestamp
+    CURRENT_TIMESTAMP() AS AS_OF_TIMESTAMP
+    
+FROM GOVERNANCE.CONTRACT_REGISTRY.CONTRACTS;
+
+-- ─────────────────────────────────────────────────────────────────────────────
+-- VIEW: Data Lineage Graph
+-- ─────────────────────────────────────────────────────────────────────────────
+
+CREATE OR REPLACE VIEW GOVERNANCE.OBSERVABILITY.VW_CONTRACT_LINEAGE AS
+WITH RECURSIVE lineage_cte AS (
+    -- Base: Get all contracts with their dependencies
+    SELECT 
+        c.CONTRACT_ID,
+        c.CONTRACT_TYPE,
+        c.VERSION,
+        c.STATUS,
+        c.YAML_DEFINITION:contract:lineage:downstream_dependencies AS DOWNSTREAM,
+        c.YAML_DEFINITION:contract:lineage:upstream_dependencies AS UPSTREAM,
+        c.YAML_DEFINITION:contract:lineage:source_systems AS SOURCES,
+        1 AS DEPTH
+    FROM GOVERNANCE.CONTRACT_REGISTRY.CONTRACTS c
+    WHERE c.STATUS = 'active'
+)
+SELECT
+    l.CONTRACT_ID AS SOURCE_CONTRACT,
+    l.CONTRACT_TYPE AS SOURCE_TYPE,
+    d.VALUE:contract_id::VARCHAR AS TARGET_CONTRACT,
+    d.VALUE:type::VARCHAR AS RELATIONSHIP_TYPE,
+    'DOWNSTREAM' AS DIRECTION
+FROM lineage_cte l,
+    TABLE(FLATTEN(l.DOWNSTREAM)) d
+WHERE l.DOWNSTREAM IS NOT NULL
+
+UNION ALL
+
+SELECT
+    l.CONTRACT_ID AS SOURCE_CONTRACT,
+    l.CONTRACT_TYPE AS SOURCE_TYPE,
+    u.VALUE:contract_id::VARCHAR AS TARGET_CONTRACT,
+    u.VALUE:type::VARCHAR AS RELATIONSHIP_TYPE,
+    'UPSTREAM' AS DIRECTION
+FROM lineage_cte l,
+    TABLE(FLATTEN(l.UPSTREAM)) u
+WHERE l.UPSTREAM IS NOT NULL;
+
+-- ─────────────────────────────────────────────────────────────────────────────
+-- VIEW: Breaking Changes Pending Approval
+-- ─────────────────────────────────────────────────────────────────────────────
+
+CREATE OR REPLACE VIEW GOVERNANCE.OBSERVABILITY.VW_PENDING_BREAKING_CHANGES AS
+SELECT
+    bca.CONTRACT_ID,
+    bca.FROM_VERSION,
+    bca.TO_VERSION,
+    c.PRODUCER_TEAM,
+    COUNT(*) AS TOTAL_CONSUMERS_AFFECTED,
+    COUNT(CASE WHEN bca.STATUS = 'pending' THEN 1 END) AS PENDING_COUNT,
+    COUNT(CASE WHEN bca.STATUS = 'acknowledged' THEN 1 END) AS ACKNOWLEDGED_COUNT,
+    COUNT(CASE WHEN bca.STATUS = 'objected' THEN 1 END) AS OBJECTED_COUNT,
+    MIN(bca.NOTIFIED_AT) AS FIRST_NOTIFIED,
+    MIN(bca.DEADLINE_AT) AS APPROVAL_DEADLINE,
+    DATEDIFF('day', CURRENT_TIMESTAMP(), MIN(bca.DEADLINE_AT)) AS DAYS_UNTIL_DEADLINE
+FROM GOVERNANCE.CONTRACT_REGISTRY.BREAKING_CHANGE_APPROVALS bca
+JOIN GOVERNANCE.CONTRACT_REGISTRY.CONTRACTS c 
+    ON bca.CONTRACT_ID = c.CONTRACT_ID
+WHERE bca.STATUS = 'pending'
+GROUP BY bca.CONTRACT_ID, bca.FROM_VERSION, bca.TO_VERSION, c.PRODUCER_TEAM
+ORDER BY DAYS_UNTIL_DEADLINE ASC;
+
+-- ─────────────────────────────────────────────────────────────────────────────
+-- VIEW: Tag Coverage Analysis
+-- ─────────────────────────────────────────────────────────────────────────────
+
+CREATE OR REPLACE VIEW GOVERNANCE.OBSERVABILITY.VW_TAG_COVERAGE AS
+WITH column_tags AS (
+    SELECT 
+        c.CONTRACT_ID,
+        col.VALUE:name::VARCHAR AS COLUMN_NAME,
+        col.VALUE:system_managed::BOOLEAN AS IS_SYSTEM,
+        col.VALUE:tags:DATA_CLASSIFICATION::VARCHAR AS DATA_CLASSIFICATION,
+        col.VALUE:tags:PII_TYPE::VARCHAR AS PII_TYPE,
+        col.VALUE:tags:AI_ALLOWED::VARCHAR AS AI_ALLOWED,
+        col.VALUE:tags:RESIDENCY_REGION::VARCHAR AS RESIDENCY_REGION
+    FROM GOVERNANCE.CONTRACT_REGISTRY.CONTRACTS c,
+        TABLE(FLATTEN(c.YAML_DEFINITION:contract:schema:columns)) col
+    WHERE c.STATUS = 'active'
+      AND c.CONTRACT_TYPE = 'data'
+)
+SELECT
+    CONTRACT_ID,
+    COUNT(*) AS TOTAL_COLUMNS,
+    COUNT(CASE WHEN NOT COALESCE(IS_SYSTEM, FALSE) THEN 1 END) AS BUSINESS_COLUMNS,
+    
+    -- Tag Coverage
+    COUNT(CASE WHEN DATA_CLASSIFICATION IS NOT NULL AND NOT COALESCE(IS_SYSTEM, FALSE) THEN 1 END) AS HAS_CLASSIFICATION,
+    COUNT(CASE WHEN PII_TYPE IS NOT NULL AND NOT COALESCE(IS_SYSTEM, FALSE) THEN 1 END) AS HAS_PII_TYPE,
+    COUNT(CASE WHEN AI_ALLOWED IS NOT NULL AND NOT COALESCE(IS_SYSTEM, FALSE) THEN 1 END) AS HAS_AI_ALLOWED,
+    
+    -- Coverage Percentages
+    ROUND(COUNT(CASE WHEN DATA_CLASSIFICATION IS NOT NULL AND NOT COALESCE(IS_SYSTEM, FALSE) THEN 1 END)::FLOAT / 
+          NULLIF(COUNT(CASE WHEN NOT COALESCE(IS_SYSTEM, FALSE) THEN 1 END), 0) * 100, 1) AS CLASSIFICATION_COVERAGE_PCT,
+    ROUND(COUNT(CASE WHEN PII_TYPE IS NOT NULL AND NOT COALESCE(IS_SYSTEM, FALSE) THEN 1 END)::FLOAT / 
+          NULLIF(COUNT(CASE WHEN NOT COALESCE(IS_SYSTEM, FALSE) THEN 1 END), 0) * 100, 1) AS PII_COVERAGE_PCT,
+    ROUND(COUNT(CASE WHEN AI_ALLOWED IS NOT NULL AND NOT COALESCE(IS_SYSTEM, FALSE) THEN 1 END)::FLOAT / 
+          NULLIF(COUNT(CASE WHEN NOT COALESCE(IS_SYSTEM, FALSE) THEN 1 END), 0) * 100, 1) AS AI_COVERAGE_PCT,
+          
+    -- PII Breakdown
+    COUNT(CASE WHEN PII_TYPE = 'HIGH' THEN 1 END) AS HIGH_PII_COLUMNS,
+    COUNT(CASE WHEN PII_TYPE = 'MODERATE' THEN 1 END) AS MODERATE_PII_COLUMNS,
+    COUNT(CASE WHEN PII_TYPE = 'LOW' THEN 1 END) AS LOW_PII_COLUMNS,
+    COUNT(CASE WHEN PII_TYPE = 'NONE' THEN 1 END) AS NO_PII_COLUMNS,
+    
+    -- AI Eligibility
+    COUNT(CASE WHEN AI_ALLOWED = 'TRUE' THEN 1 END) AS AI_ALLOWED_COLUMNS,
+    COUNT(CASE WHEN AI_ALLOWED = 'FALSE' THEN 1 END) AS AI_BLOCKED_COLUMNS,
+    COUNT(CASE WHEN AI_ALLOWED = 'PSEUDONYMIZED_ONLY' THEN 1 END) AS AI_PSEUDO_ONLY_COLUMNS
+    
+FROM column_tags
+GROUP BY CONTRACT_ID;
+
+-- ─────────────────────────────────────────────────────────────────────────────
+-- TABLE: Alerts Log
+-- ─────────────────────────────────────────────────────────────────────────────
+
+CREATE TABLE IF NOT EXISTS GOVERNANCE.OBSERVABILITY.ALERTS (
+    ALERT_ID VARCHAR(64) PRIMARY KEY,
+    CONTRACT_ID VARCHAR(128),
+    ALERT_TYPE VARCHAR(50),  -- 'SLA_VIOLATION', 'QUALITY_FAILURE', 'SCHEMA_DRIFT', 'BREAKING_CHANGE'
+    SEVERITY VARCHAR(20),    -- 'INFO', 'WARNING', 'ERROR', 'CRITICAL'
+    TITLE VARCHAR(256),
+    MESSAGE TEXT,
+    DETAILS VARIANT,
+    STATUS VARCHAR(20) DEFAULT 'OPEN',  -- 'OPEN', 'ACKNOWLEDGED', 'RESOLVED', 'IGNORED'
+    CREATED_AT TIMESTAMP_NTZ DEFAULT CURRENT_TIMESTAMP(),
+    ACKNOWLEDGED_AT TIMESTAMP_NTZ,
+    ACKNOWLEDGED_BY VARCHAR(256),
+    RESOLVED_AT TIMESTAMP_NTZ,
+    RESOLVED_BY VARCHAR(256)
+);
+
+-- ─────────────────────────────────────────────────────────────────────────────
+-- PROCEDURE: Generate Alerts from Violations
+-- ─────────────────────────────────────────────────────────────────────────────
+
+CREATE OR REPLACE PROCEDURE GOVERNANCE.OBSERVABILITY.GENERATE_ALERTS()
+RETURNS VARCHAR
+LANGUAGE SQL
+AS
+$$
+DECLARE
+    v_alert_count INT := 0;
+BEGIN
+    -- Generate SLA violation alerts
+    INSERT INTO GOVERNANCE.OBSERVABILITY.ALERTS (
+        ALERT_ID, CONTRACT_ID, ALERT_TYPE, SEVERITY, TITLE, MESSAGE, DETAILS
+    )
+    SELECT
+        UUID_STRING(),
+        CONTRACT_ID,
+        'SLA_VIOLATION',
+        'ERROR',
+        'Freshness SLA Violation: ' || CONTRACT_ID,
+        'Data freshness exceeded threshold. Current age: ' || MEASURED_VALUE || ' minutes, Threshold: ' || THRESHOLD_VALUE || ' minutes',
+        OBJECT_CONSTRUCT(
+            'measured_value', MEASURED_VALUE,
+            'threshold', THRESHOLD_VALUE,
+            'measured_at', MEASURED_AT
+        )
+    FROM GOVERNANCE.CONTRACT_REGISTRY.SLA_METRICS
+    WHERE IS_VIOLATION = TRUE
+      AND MEASURED_AT > DATEADD('hour', -1, CURRENT_TIMESTAMP())
+      AND NOT EXISTS (
+          SELECT 1 FROM GOVERNANCE.OBSERVABILITY.ALERTS a
+          WHERE a.CONTRACT_ID = SLA_METRICS.CONTRACT_ID
+            AND a.ALERT_TYPE = 'SLA_VIOLATION'
+            AND a.STATUS = 'OPEN'
+            AND a.CREATED_AT > DATEADD('hour', -1, CURRENT_TIMESTAMP())
+      );
+    
+    v_alert_count := v_alert_count + SQLROWCOUNT;
+    
+    -- Generate quality failure alerts
+    INSERT INTO GOVERNANCE.OBSERVABILITY.ALERTS (
+        ALERT_ID, CONTRACT_ID, ALERT_TYPE, SEVERITY, TITLE, MESSAGE, DETAILS
+    )
+    SELECT
+        UUID_STRING(),
+        CONTRACT_ID,
+        'QUALITY_FAILURE',
+        IFF(RESULT_VALUE:severity::VARCHAR = 'error', 'ERROR', 'WARNING'),
+        'Quality Rule Failed: ' || RESULT_VALUE:rule_name::VARCHAR,
+        'Quality rule "' || RESULT_VALUE:rule_name::VARCHAR || '" failed for contract ' || CONTRACT_ID,
+        OBJECT_CONSTRUCT(
+            'rule_id', RULE_ID,
+            'rule_name', RESULT_VALUE:rule_name,
+            'severity', RESULT_VALUE:severity,
+            'execution_time', EXECUTION_TIME
+        )
+    FROM GOVERNANCE.CONTRACT_REGISTRY.QUALITY_RULE_RESULTS
+    WHERE PASSED = FALSE
+      AND EXECUTION_TIME > DATEADD('hour', -1, CURRENT_TIMESTAMP())
+      AND RESULT_VALUE:severity::VARCHAR = 'error'
+      AND NOT EXISTS (
+          SELECT 1 FROM GOVERNANCE.OBSERVABILITY.ALERTS a
+          WHERE a.CONTRACT_ID = QUALITY_RULE_RESULTS.CONTRACT_ID
+            AND a.ALERT_TYPE = 'QUALITY_FAILURE'
+            AND a.DETAILS:rule_id::VARCHAR = QUALITY_RULE_RESULTS.RULE_ID
+            AND a.STATUS = 'OPEN'
+      );
+    
+    v_alert_count := v_alert_count + SQLROWCOUNT;
+    
+    RETURN 'Generated ' || v_alert_count || ' alerts';
+END;
+$$;
+
+-- ─────────────────────────────────────────────────────────────────────────────
+-- VIEW: Active Alerts
+-- ─────────────────────────────────────────────────────────────────────────────
+
+CREATE OR REPLACE VIEW GOVERNANCE.OBSERVABILITY.VW_ACTIVE_ALERTS AS
+SELECT
+    a.ALERT_ID,
+    a.CONTRACT_ID,
+    c.PRODUCER_TEAM,
+    c.PRODUCER_EMAIL,
+    a.ALERT_TYPE,
+    a.SEVERITY,
+    a.TITLE,
+    a.MESSAGE,
+    a.STATUS,
+    a.CREATED_AT,
+    DATEDIFF('minute', a.CREATED_AT, CURRENT_TIMESTAMP()) AS AGE_MINUTES,
+    a.DETAILS
+FROM GOVERNANCE.OBSERVABILITY.ALERTS a
+LEFT JOIN GOVERNANCE.CONTRACT_REGISTRY.CONTRACTS c 
+    ON a.CONTRACT_ID = c.CONTRACT_ID AND c.STATUS = 'active'
+WHERE a.STATUS IN ('OPEN', 'ACKNOWLEDGED')
+ORDER BY 
+    CASE a.SEVERITY 
+        WHEN 'CRITICAL' THEN 1 
+        WHEN 'ERROR' THEN 2 
+        WHEN 'WARNING' THEN 3 
+        ELSE 4 
+    END,
+    a.CREATED_AT DESC;
+
+-- ─────────────────────────────────────────────────────────────────────────────
+-- VIEW: Dashboard KPIs
+-- ─────────────────────────────────────────────────────────────────────────────
+
+CREATE OR REPLACE VIEW GOVERNANCE.OBSERVABILITY.VW_DASHBOARD_KPIS AS
+SELECT
+    -- Contract Counts
+    (SELECT COUNT(*) FROM GOVERNANCE.CONTRACT_REGISTRY.CONTRACTS WHERE STATUS = 'active') AS ACTIVE_CONTRACTS,
+    (SELECT COUNT(*) FROM GOVERNANCE.CONTRACT_REGISTRY.CONTRACTS WHERE STATUS = 'review') AS PENDING_REVIEW,
+    (SELECT COUNT(*) FROM GOVERNANCE.OBSERVABILITY.VW_PENDING_BREAKING_CHANGES) AS BREAKING_CHANGES_PENDING,
+    
+    -- Health Metrics
+    (SELECT ROUND(AVG(OVERALL_SCORE), 1) FROM GOVERNANCE.OBSERVABILITY.VW_CONTRACT_HEALTH_DASHBOARD) AS AVG_HEALTH_SCORE,
+    (SELECT COUNT(*) FROM GOVERNANCE.OBSERVABILITY.VW_CONTRACT_HEALTH_DASHBOARD WHERE OVERALL_HEALTH = 'HEALTHY') AS HEALTHY_COUNT,
+    (SELECT COUNT(*) FROM GOVERNANCE.OBSERVABILITY.VW_CONTRACT_HEALTH_DASHBOARD WHERE OVERALL_HEALTH = 'WARNING') AS WARNING_COUNT,
+    (SELECT COUNT(*) FROM GOVERNANCE.OBSERVABILITY.VW_CONTRACT_HEALTH_DASHBOARD WHERE OVERALL_HEALTH = 'CRITICAL') AS CRITICAL_COUNT,
+    
+    -- Quality Metrics
+    (SELECT ROUND(AVG(QUALITY_SCORE), 1) FROM GOVERNANCE.OBSERVABILITY.VW_CONTRACT_HEALTH_DASHBOARD) AS AVG_QUALITY_SCORE,
+    
+    -- SLA Metrics (last 24 hours)
+    (SELECT ROUND(
+        COUNT(CASE WHEN NOT IS_VIOLATION THEN 1 END)::FLOAT / NULLIF(COUNT(*), 0) * 100, 1
+    ) FROM GOVERNANCE.CONTRACT_REGISTRY.SLA_METRICS 
+    WHERE MEASURED_AT > DATEADD('hour', -24, CURRENT_TIMESTAMP())) AS SLA_COMPLIANCE_24H,
+    
+    -- Alerts
+    (SELECT COUNT(*) FROM GOVERNANCE.OBSERVABILITY.VW_ACTIVE_ALERTS WHERE SEVERITY IN ('CRITICAL', 'ERROR')) AS CRITICAL_ALERTS,
+    (SELECT COUNT(*) FROM GOVERNANCE.OBSERVABILITY.VW_ACTIVE_ALERTS WHERE SEVERITY = 'WARNING') AS WARNING_ALERTS,
+    
+    -- Consumer Stats
+    (SELECT COUNT(DISTINCT CONTRACT_ID) FROM GOVERNANCE.CONTRACT_REGISTRY.CONTRACT_CONSUMERS) AS CONTRACTS_WITH_CONSUMERS,
+    (SELECT COUNT(*) FROM GOVERNANCE.CONTRACT_REGISTRY.CONTRACT_CONSUMERS) AS TOTAL_CONSUMER_REGISTRATIONS,
+    
+    -- Timestamp
+    CURRENT_TIMESTAMP() AS AS_OF_TIMESTAMP;
+
+-- ─────────────────────────────────────────────────────────────────────────────
+-- TASK: Generate Alerts Periodically
+-- ─────────────────────────────────────────────────────────────────────────────
+
+CREATE OR REPLACE TASK GOVERNANCE.OBSERVABILITY.TASK_GENERATE_ALERTS
+    WAREHOUSE = TRANSFORM_WH
+    SCHEDULE = 'USING CRON */15 * * * * UTC'  -- Every 15 minutes
+    COMMENT = 'Generate alerts from contract violations'
+AS
+    CALL GOVERNANCE.OBSERVABILITY.GENERATE_ALERTS();
+
+-- Enable the task (uncomment when ready)
+-- ALTER TASK GOVERNANCE.OBSERVABILITY.TASK_GENERATE_ALERTS RESUME;
+
+-- ─────────────────────────────────────────────────────────────────────────────
+-- VERIFICATION
+-- ─────────────────────────────────────────────────────────────────────────────
+
+SELECT 'Observability Dashboard Created Successfully' AS STATUS;
+
+SHOW VIEWS IN SCHEMA GOVERNANCE.OBSERVABILITY;
+
+-- Sample dashboard query
+SELECT * FROM GOVERNANCE.OBSERVABILITY.VW_DASHBOARD_KPIS;

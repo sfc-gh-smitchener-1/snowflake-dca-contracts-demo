@@ -1,0 +1,247 @@
+# Architecture Alignment with Enterprise Architecture Guide v.5
+
+This document maps the Snowflake Data Contracts Demo to the principles outlined in the **Enterprise Architecture Guide for the Snowflake Data Cloud v.5**.
+
+## Core Principle: The Dependency Chain
+
+The guide establishes a fundamental truth:
+
+> *"Complex systems do not scale outcomes until they stabilize dependencies."*
+
+The dependency chain flows in one direction:
+
+```
+People → Data → Governance → Automation
+```
+
+Each layer inherits the stability (or instability) of the layer that precedes it.
+
+### How This Demo Implements the Chain
+
+| Layer | Responsibility | Demo Implementation |
+|-------|---------------|---------------------|
+| **People** | Define intent and decision context | Contract `producer` ownership, consumer registration |
+| **Data** | Encode meaning and ownership | Schema definitions, column contracts, quality rules |
+| **Governance** | Enforce constraints at runtime | Tags, masking policies, row access policies |
+| **Automation** | Execute decisions at scale | Dynamic Tables, scheduled validation, alerting |
+
+---
+
+## Intent as Executable Constraints
+
+The guide defines six dimensions of intent that must be executable, not merely documented:
+
+### 1. Meaning (What does this data represent?)
+
+```yaml
+# From contracts/data/tpch_customer_v1.yml
+columns:
+  - name: C_CUSTKEY
+    description: "Unique customer identifier (primary key)"
+    type: NUMBER(38,0)
+```
+
+**Enforcement**: Column descriptions flow through to Snowflake comments, semantic models enable natural language queries.
+
+### 2. Ownership (Who is accountable?)
+
+```yaml
+producer:
+  system: SNOWFLAKE_SAMPLE_TPCH
+  team: Demo Data Engineering
+  owner: demo-team@company.com
+  slack_channel: "#demo-data-contracts"
+```
+
+**Enforcement**: Breaking changes require consumer acknowledgment, alerts route to owner.
+
+### 3. Stability (How may this change?)
+
+```yaml
+contract:
+  id: tpch_customer_v1
+  version: 1.0.0
+  status: active  # draft | review | approved | active | deprecated | retired
+```
+
+**Enforcement**: Version history tracked, semantic versioning for breaking changes.
+
+### 4. Allowed Use (Who may use this data and for what purpose?)
+
+```yaml
+consumers:
+  - team: Analytics Platform
+    contact: analytics@company.com
+    use_case: Customer segmentation and sales analysis
+    access_level: read_masked
+
+access:
+  allowed_roles:
+    - DATA_ANALYST_${REGION}
+    - BI_DEVELOPER_${REGION}
+```
+
+**Enforcement**: Consumer registration, role-based access, masking policies.
+
+### 5. Risk Class (What protections apply?)
+
+```yaml
+tags:
+  DATA_CLASSIFICATION: CONFIDENTIAL
+  PII_TYPE: MODERATE
+  RESIDENCY_REGION: ORIGIN
+
+governance:
+  classification: CONFIDENTIAL
+  residency_requirements:
+    - "PII columns must not leave origin region without masking"
+```
+
+**Enforcement**: Snowflake tags applied at column level, masking policies triggered by tags.
+
+### 6. AI Eligibility (May automation or AI consume this data?)
+
+```yaml
+tags:
+  AI_ALLOWED: PSEUDONYMIZED_ONLY
+
+ai_constraints:
+  embedding_allowed: true
+  raw_pii_in_output: false
+  model_training_allowed: true
+```
+
+**Enforcement**: Semantic layer pseudonymizes PII, first-class semantic views with YAML model definitions created for Cortex Analyst and Snowflake Intelligence consumption.
+
+---
+
+## Three-Layer Architecture
+
+The guide recommends separating concerns across layers. Our demo implements:
+
+### RAW Layer (RAW_DEV)
+- **Purpose**: Capture data with minimal transformation
+- **Trust Model**: Source system fidelity
+- **Key Features**:
+  - Direct load from sources
+  - Current record management (_IS_CURRENT flag)
+  - Row hash for change detection
+  - Full governance tags applied
+
+### CURATED Layer (CURATED_DEV)
+- **Purpose**: Business-ready transformations
+- **Trust Model**: Business rule enforcement
+- **Key Features**:
+  - Dynamic Tables for automated refresh
+  - Derived attributes and classifications
+  - Dimensional modeling
+  - Inherited governance from RAW
+
+### SEMANTIC Layer (SEM_DEV)
+- **Purpose**: Consumer-facing, AI-ready products
+- **Trust Model**: Contract guarantees
+- **Key Features**:
+  - First-class Snowflake semantic views (not secure views)
+  - Designed for Cortex Analyst and Snowflake Intelligence
+  - Pseudonymized identifiers for AI safety
+  - YAML semantic models with dimensions, measures, and sample questions
+  - Pre-calculated metrics and business-friendly column names
+  - Masking policies for PII at query time (not in view definition)
+
+---
+
+## Contract Types
+
+### Data Contracts (Producer → Platform)
+
+Located in `contracts/data/`, these define:
+- What the producer commits to deliver
+- Schema, SLAs, quality rules
+- Governance classifications
+- Lineage from source systems
+
+### Product Contracts (Platform → Consumer)
+
+Located in `contracts/products/`, these define:
+- What consumers can rely on
+- Output specification
+- Freshness and quality guarantees
+- AI constraints and access controls
+
+---
+
+## Observability: The Feedback Loop
+
+The guide emphasizes reflexive systems that learn:
+
+> *"When the system can see itself clearly, it can improve itself deliberately."*
+
+Our observability layer provides:
+
+| View | Purpose |
+|------|---------|
+| `VW_DASHBOARD_KPIS` | High-level health metrics |
+| `VW_CONTRACT_HEALTH_DASHBOARD` | Per-contract health scoring |
+| `VW_SLA_COMPLIANCE_TREND` | Trending over time |
+| `VW_QUALITY_SCORE_TREND` | Quality rule pass rates |
+| `VW_ACTIVE_ALERTS` | Current violations |
+| `VW_TAG_COVERAGE` | Governance completeness |
+| `VW_CONTRACT_LINEAGE` | Dependency graph |
+
+---
+
+## Key Quotes Implemented
+
+### On Contracts
+
+> *"Publish contracts instead of assumptions."*
+
+Every table in our demo has a corresponding contract that defines expectations before data flows.
+
+### On Governance
+
+> *"Enforce governance at runtime."*
+
+Tags are applied via SQL, policies execute during query processing, not as after-the-fact audits.
+
+### On AI
+
+> *"Treat AI as a participant, not an exception."*
+
+`AI_ALLOWED` tags explicitly declare what data AI systems may consume, with `PSEUDONYMIZED_ONLY` as the bridge between protection and utility.
+
+### On Scale
+
+> *"Ambiguity can only be resolved before it is encoded."*
+
+Contracts force disambiguation at design time, before data enters the platform.
+
+---
+
+## Extending This Demo
+
+When adding new data sources, follow the dependency chain:
+
+1. **People**: Who owns this data? Who will consume it?
+2. **Data**: What does each column mean? What are the constraints?
+3. **Governance**: What classification? What PII level? AI eligible?
+4. **Automation**: Dynamic tables, scheduled validation, alerting
+
+Use the contract generator to bootstrap:
+
+```sql
+CALL GOVERNANCE.CONTRACT_REGISTRY.GENERATE_CONTRACT_FROM_TABLE(
+    'DATABASE', 'SCHEMA', 'TABLE', 'SYSTEM_NAME'
+);
+```
+
+Then refine the generated contract with business context that only people can provide.
+
+---
+
+## References
+
+- [Enterprise Architecture Guide for the Snowflake Data Cloud v.5](https://docs.google.com/document/d/1C2GtbfRo0koEtvrMejTzzyRib7eadsVstOaAlrUls-w)
+- [Snowflake Object Tagging](https://docs.snowflake.com/en/user-guide/object-tagging)
+- [Snowflake Dynamic Tables](https://docs.snowflake.com/en/user-guide/dynamic-tables-intro)
+- [Data Contract Specification](https://datacontract.com/)

@@ -1,0 +1,381 @@
+-- ============================================================================
+-- RAW LAYER TABLES - TPCH Data with Contract-Enforced Schema
+-- ============================================================================
+-- This script creates raw layer tables with:
+--   1. Schema matching data contracts
+--   2. System columns for CDC and current record management
+--   3. Governance tags applied from contract definitions
+-- ============================================================================
+
+USE ROLE ACCOUNTADMIN;
+USE DATABASE RAW_DEV;
+USE SCHEMA RAW_TPCH;
+USE WAREHOUSE TRANSFORM_WH;
+
+-- ─────────────────────────────────────────────────────────────────────────────
+-- REGION TABLE (Reference Data)
+-- Contract: tpch_region_v1
+-- ─────────────────────────────────────────────────────────────────────────────
+
+CREATE OR REPLACE TABLE RAW_DEV.RAW_TPCH.REGION_RAW (
+    -- Business Columns
+    R_REGIONKEY     NUMBER(38,0) NOT NULL,
+    R_NAME          VARCHAR(25) NOT NULL,
+    R_COMMENT       VARCHAR(152),
+    
+    -- System Columns
+    _LOADED_AT      TIMESTAMP_NTZ NOT NULL DEFAULT CURRENT_TIMESTAMP(),
+    _SOURCE_FILE    VARCHAR(1024) DEFAULT 'SNOWFLAKE_SAMPLE_DATA.TPCH_SF1',
+    _IS_CURRENT     BOOLEAN DEFAULT TRUE,
+    
+    -- Constraints
+    PRIMARY KEY (R_REGIONKEY)
+)
+COMMENT = 'TPCH Region reference data - Contract: tpch_region_v1'
+WITH TAG (
+    GOVERNANCE.TAGS.CONTRACT_ID = 'tpch_region_v1',
+    GOVERNANCE.TAGS.CONTRACT_VERSION = '1.0.0',
+    GOVERNANCE.TAGS.DATA_CLASSIFICATION = 'PUBLIC'
+);
+
+-- Apply column-level tags
+ALTER TABLE RAW_DEV.RAW_TPCH.REGION_RAW MODIFY COLUMN R_REGIONKEY
+    SET TAG GOVERNANCE.TAGS.PII_TYPE = 'NONE', 
+            GOVERNANCE.TAGS.AI_ALLOWED = 'TRUE';
+
+ALTER TABLE RAW_DEV.RAW_TPCH.REGION_RAW MODIFY COLUMN R_NAME
+    SET TAG GOVERNANCE.TAGS.PII_TYPE = 'NONE', 
+            GOVERNANCE.TAGS.AI_ALLOWED = 'TRUE';
+
+-- ─────────────────────────────────────────────────────────────────────────────
+-- NATION TABLE (Reference Data)
+-- Contract: tpch_nation_v1
+-- ─────────────────────────────────────────────────────────────────────────────
+
+CREATE OR REPLACE TABLE RAW_DEV.RAW_TPCH.NATION_RAW (
+    -- Business Columns
+    N_NATIONKEY     NUMBER(38,0) NOT NULL,
+    N_NAME          VARCHAR(25) NOT NULL,
+    N_REGIONKEY     NUMBER(38,0) NOT NULL,
+    N_COMMENT       VARCHAR(152),
+    
+    -- System Columns
+    _LOADED_AT      TIMESTAMP_NTZ NOT NULL DEFAULT CURRENT_TIMESTAMP(),
+    _SOURCE_FILE    VARCHAR(1024) DEFAULT 'SNOWFLAKE_SAMPLE_DATA.TPCH_SF1',
+    _IS_CURRENT     BOOLEAN DEFAULT TRUE,
+    
+    -- Constraints
+    PRIMARY KEY (N_NATIONKEY),
+    FOREIGN KEY (N_REGIONKEY) REFERENCES RAW_DEV.RAW_TPCH.REGION_RAW(R_REGIONKEY)
+)
+COMMENT = 'TPCH Nation reference data - Contract: tpch_nation_v1'
+WITH TAG (
+    GOVERNANCE.TAGS.CONTRACT_ID = 'tpch_nation_v1',
+    GOVERNANCE.TAGS.CONTRACT_VERSION = '1.0.0',
+    GOVERNANCE.TAGS.DATA_CLASSIFICATION = 'PUBLIC'
+);
+
+-- Apply column-level tags
+ALTER TABLE RAW_DEV.RAW_TPCH.NATION_RAW MODIFY COLUMN N_NATIONKEY
+    SET TAG GOVERNANCE.TAGS.PII_TYPE = 'NONE', 
+            GOVERNANCE.TAGS.AI_ALLOWED = 'TRUE';
+
+ALTER TABLE RAW_DEV.RAW_TPCH.NATION_RAW MODIFY COLUMN N_NAME
+    SET TAG GOVERNANCE.TAGS.PII_TYPE = 'NONE', 
+            GOVERNANCE.TAGS.AI_ALLOWED = 'TRUE';
+
+-- ─────────────────────────────────────────────────────────────────────────────
+-- CUSTOMER TABLE
+-- Contract: tpch_customer_v1
+-- ─────────────────────────────────────────────────────────────────────────────
+
+CREATE OR REPLACE TABLE RAW_DEV.RAW_TPCH.CUSTOMER_RAW (
+    -- Business Columns
+    C_CUSTKEY       NUMBER(38,0) NOT NULL,
+    C_NAME          VARCHAR(25) NOT NULL,
+    C_ADDRESS       VARCHAR(40) NOT NULL,
+    C_NATIONKEY     NUMBER(38,0) NOT NULL,
+    C_PHONE         VARCHAR(15) NOT NULL,
+    C_ACCTBAL       NUMBER(12,2) NOT NULL,
+    C_MKTSEGMENT    VARCHAR(10) NOT NULL,
+    C_COMMENT       VARCHAR(117),
+    
+    -- System Columns
+    _LOADED_AT      TIMESTAMP_NTZ NOT NULL DEFAULT CURRENT_TIMESTAMP(),
+    _SOURCE_FILE    VARCHAR(1024) DEFAULT 'SNOWFLAKE_SAMPLE_DATA.TPCH_SF1',
+    _ROW_HASH       VARCHAR(64),
+    _IS_CURRENT     BOOLEAN DEFAULT TRUE,
+    
+    -- Constraints
+    PRIMARY KEY (C_CUSTKEY)
+)
+COMMENT = 'TPCH Customer data - Contract: tpch_customer_v1'
+WITH TAG (
+    GOVERNANCE.TAGS.CONTRACT_ID = 'tpch_customer_v1',
+    GOVERNANCE.TAGS.CONTRACT_VERSION = '1.0.0',
+    GOVERNANCE.TAGS.DATA_CLASSIFICATION = 'CONFIDENTIAL'
+);
+
+-- Apply column-level tags (PII sensitive columns)
+ALTER TABLE RAW_DEV.RAW_TPCH.CUSTOMER_RAW MODIFY COLUMN C_CUSTKEY
+    SET TAG GOVERNANCE.TAGS.PII_TYPE = 'NONE', 
+            GOVERNANCE.TAGS.AI_ALLOWED = 'TRUE';
+
+ALTER TABLE RAW_DEV.RAW_TPCH.CUSTOMER_RAW MODIFY COLUMN C_NAME
+    SET TAG GOVERNANCE.TAGS.PII_TYPE = 'MODERATE', 
+            GOVERNANCE.TAGS.AI_ALLOWED = 'PSEUDONYMIZED_ONLY',
+            GOVERNANCE.TAGS.RESIDENCY_REGION = 'ORIGIN';
+
+ALTER TABLE RAW_DEV.RAW_TPCH.CUSTOMER_RAW MODIFY COLUMN C_ADDRESS
+    SET TAG GOVERNANCE.TAGS.PII_TYPE = 'MODERATE', 
+            GOVERNANCE.TAGS.AI_ALLOWED = 'FALSE',
+            GOVERNANCE.TAGS.RESIDENCY_REGION = 'ORIGIN';
+
+ALTER TABLE RAW_DEV.RAW_TPCH.CUSTOMER_RAW MODIFY COLUMN C_PHONE
+    SET TAG GOVERNANCE.TAGS.PII_TYPE = 'MODERATE', 
+            GOVERNANCE.TAGS.AI_ALLOWED = 'FALSE',
+            GOVERNANCE.TAGS.RESIDENCY_REGION = 'ORIGIN';
+
+ALTER TABLE RAW_DEV.RAW_TPCH.CUSTOMER_RAW MODIFY COLUMN C_ACCTBAL
+    SET TAG GOVERNANCE.TAGS.PII_TYPE = 'LOW', 
+            GOVERNANCE.TAGS.AI_ALLOWED = 'TRUE';
+
+ALTER TABLE RAW_DEV.RAW_TPCH.CUSTOMER_RAW MODIFY COLUMN C_MKTSEGMENT
+    SET TAG GOVERNANCE.TAGS.PII_TYPE = 'NONE', 
+            GOVERNANCE.TAGS.AI_ALLOWED = 'TRUE';
+
+-- ─────────────────────────────────────────────────────────────────────────────
+-- SUPPLIER TABLE
+-- Contract: tpch_supplier_v1
+-- ─────────────────────────────────────────────────────────────────────────────
+
+CREATE OR REPLACE TABLE RAW_DEV.RAW_TPCH.SUPPLIER_RAW (
+    -- Business Columns
+    S_SUPPKEY       NUMBER(38,0) NOT NULL,
+    S_NAME          VARCHAR(25) NOT NULL,
+    S_ADDRESS       VARCHAR(40) NOT NULL,
+    S_NATIONKEY     NUMBER(38,0) NOT NULL,
+    S_PHONE         VARCHAR(15) NOT NULL,
+    S_ACCTBAL       NUMBER(12,2) NOT NULL,
+    S_COMMENT       VARCHAR(101),
+    
+    -- System Columns
+    _LOADED_AT      TIMESTAMP_NTZ NOT NULL DEFAULT CURRENT_TIMESTAMP(),
+    _SOURCE_FILE    VARCHAR(1024) DEFAULT 'SNOWFLAKE_SAMPLE_DATA.TPCH_SF1',
+    _ROW_HASH       VARCHAR(64),
+    _IS_CURRENT     BOOLEAN DEFAULT TRUE,
+    
+    -- Constraints
+    PRIMARY KEY (S_SUPPKEY)
+)
+COMMENT = 'TPCH Supplier data - Contract: tpch_supplier_v1'
+WITH TAG (
+    GOVERNANCE.TAGS.CONTRACT_ID = 'tpch_supplier_v1',
+    GOVERNANCE.TAGS.CONTRACT_VERSION = '1.0.0',
+    GOVERNANCE.TAGS.DATA_CLASSIFICATION = 'CONFIDENTIAL'
+);
+
+-- Apply column-level tags
+ALTER TABLE RAW_DEV.RAW_TPCH.SUPPLIER_RAW MODIFY COLUMN S_SUPPKEY
+    SET TAG GOVERNANCE.TAGS.PII_TYPE = 'NONE', 
+            GOVERNANCE.TAGS.AI_ALLOWED = 'TRUE';
+
+ALTER TABLE RAW_DEV.RAW_TPCH.SUPPLIER_RAW MODIFY COLUMN S_NAME
+    SET TAG GOVERNANCE.TAGS.PII_TYPE = 'LOW', 
+            GOVERNANCE.TAGS.AI_ALLOWED = 'TRUE';
+
+ALTER TABLE RAW_DEV.RAW_TPCH.SUPPLIER_RAW MODIFY COLUMN S_ADDRESS
+    SET TAG GOVERNANCE.TAGS.PII_TYPE = 'LOW', 
+            GOVERNANCE.TAGS.AI_ALLOWED = 'FALSE',
+            GOVERNANCE.TAGS.RESIDENCY_REGION = 'ORIGIN';
+
+ALTER TABLE RAW_DEV.RAW_TPCH.SUPPLIER_RAW MODIFY COLUMN S_PHONE
+    SET TAG GOVERNANCE.TAGS.PII_TYPE = 'LOW', 
+            GOVERNANCE.TAGS.AI_ALLOWED = 'FALSE';
+
+-- ─────────────────────────────────────────────────────────────────────────────
+-- PART TABLE
+-- Contract: tpch_part_v1
+-- ─────────────────────────────────────────────────────────────────────────────
+
+CREATE OR REPLACE TABLE RAW_DEV.RAW_TPCH.PART_RAW (
+    -- Business Columns
+    P_PARTKEY       NUMBER(38,0) NOT NULL,
+    P_NAME          VARCHAR(55) NOT NULL,
+    P_MFGR          VARCHAR(25) NOT NULL,
+    P_BRAND         VARCHAR(10) NOT NULL,
+    P_TYPE          VARCHAR(25) NOT NULL,
+    P_SIZE          NUMBER(38,0) NOT NULL,
+    P_CONTAINER     VARCHAR(10) NOT NULL,
+    P_RETAILPRICE   NUMBER(12,2) NOT NULL,
+    P_COMMENT       VARCHAR(23),
+    
+    -- System Columns
+    _LOADED_AT      TIMESTAMP_NTZ NOT NULL DEFAULT CURRENT_TIMESTAMP(),
+    _SOURCE_FILE    VARCHAR(1024) DEFAULT 'SNOWFLAKE_SAMPLE_DATA.TPCH_SF1',
+    _ROW_HASH       VARCHAR(64),
+    _IS_CURRENT     BOOLEAN DEFAULT TRUE,
+    
+    -- Constraints
+    PRIMARY KEY (P_PARTKEY)
+)
+COMMENT = 'TPCH Part data - Contract: tpch_part_v1'
+WITH TAG (
+    GOVERNANCE.TAGS.CONTRACT_ID = 'tpch_part_v1',
+    GOVERNANCE.TAGS.CONTRACT_VERSION = '1.0.0',
+    GOVERNANCE.TAGS.DATA_CLASSIFICATION = 'INTERNAL'
+);
+
+-- Apply column-level tags
+ALTER TABLE RAW_DEV.RAW_TPCH.PART_RAW MODIFY COLUMN P_PARTKEY
+    SET TAG GOVERNANCE.TAGS.PII_TYPE = 'NONE', 
+            GOVERNANCE.TAGS.AI_ALLOWED = 'TRUE';
+
+ALTER TABLE RAW_DEV.RAW_TPCH.PART_RAW MODIFY COLUMN P_RETAILPRICE
+    SET TAG GOVERNANCE.TAGS.PII_TYPE = 'NONE', 
+            GOVERNANCE.TAGS.AI_ALLOWED = 'TRUE',
+            GOVERNANCE.TAGS.DATA_CLASSIFICATION = 'CONFIDENTIAL';
+
+-- ─────────────────────────────────────────────────────────────────────────────
+-- PARTSUPP TABLE (Part-Supplier Relationship)
+-- ─────────────────────────────────────────────────────────────────────────────
+
+CREATE OR REPLACE TABLE RAW_DEV.RAW_TPCH.PARTSUPP_RAW (
+    -- Business Columns
+    PS_PARTKEY      NUMBER(38,0) NOT NULL,
+    PS_SUPPKEY      NUMBER(38,0) NOT NULL,
+    PS_AVAILQTY     NUMBER(38,0) NOT NULL,
+    PS_SUPPLYCOST   NUMBER(12,2) NOT NULL,
+    PS_COMMENT      VARCHAR(199),
+    
+    -- System Columns
+    _LOADED_AT      TIMESTAMP_NTZ NOT NULL DEFAULT CURRENT_TIMESTAMP(),
+    _SOURCE_FILE    VARCHAR(1024) DEFAULT 'SNOWFLAKE_SAMPLE_DATA.TPCH_SF1',
+    _ROW_HASH       VARCHAR(64),
+    _IS_CURRENT     BOOLEAN DEFAULT TRUE,
+    
+    -- Constraints
+    PRIMARY KEY (PS_PARTKEY, PS_SUPPKEY)
+)
+COMMENT = 'TPCH Part-Supplier relationship data'
+WITH TAG (
+    GOVERNANCE.TAGS.CONTRACT_ID = 'tpch_partsupp_v1',
+    GOVERNANCE.TAGS.CONTRACT_VERSION = '1.0.0',
+    GOVERNANCE.TAGS.DATA_CLASSIFICATION = 'INTERNAL'
+);
+
+-- ─────────────────────────────────────────────────────────────────────────────
+-- ORDERS TABLE
+-- Contract: tpch_orders_v1
+-- ─────────────────────────────────────────────────────────────────────────────
+
+CREATE OR REPLACE TABLE RAW_DEV.RAW_TPCH.ORDERS_RAW (
+    -- Business Columns
+    O_ORDERKEY      NUMBER(38,0) NOT NULL,
+    O_CUSTKEY       NUMBER(38,0) NOT NULL,
+    O_ORDERSTATUS   VARCHAR(1) NOT NULL,
+    O_TOTALPRICE    NUMBER(12,2) NOT NULL,
+    O_ORDERDATE     DATE NOT NULL,
+    O_ORDERPRIORITY VARCHAR(15) NOT NULL,
+    O_CLERK         VARCHAR(15) NOT NULL,
+    O_SHIPPRIORITY  NUMBER(38,0) NOT NULL,
+    O_COMMENT       VARCHAR(79),
+    
+    -- System Columns
+    _LOADED_AT      TIMESTAMP_NTZ NOT NULL DEFAULT CURRENT_TIMESTAMP(),
+    _SOURCE_FILE    VARCHAR(1024) DEFAULT 'SNOWFLAKE_SAMPLE_DATA.TPCH_SF1',
+    _ROW_HASH       VARCHAR(64),
+    _IS_CURRENT     BOOLEAN DEFAULT TRUE,
+    
+    -- Constraints
+    PRIMARY KEY (O_ORDERKEY)
+)
+COMMENT = 'TPCH Orders data - Contract: tpch_orders_v1'
+WITH TAG (
+    GOVERNANCE.TAGS.CONTRACT_ID = 'tpch_orders_v1',
+    GOVERNANCE.TAGS.CONTRACT_VERSION = '1.0.0',
+    GOVERNANCE.TAGS.DATA_CLASSIFICATION = 'CONFIDENTIAL'
+);
+
+-- Apply column-level tags
+ALTER TABLE RAW_DEV.RAW_TPCH.ORDERS_RAW MODIFY COLUMN O_ORDERKEY
+    SET TAG GOVERNANCE.TAGS.PII_TYPE = 'NONE', 
+            GOVERNANCE.TAGS.AI_ALLOWED = 'TRUE';
+
+ALTER TABLE RAW_DEV.RAW_TPCH.ORDERS_RAW MODIFY COLUMN O_TOTALPRICE
+    SET TAG GOVERNANCE.TAGS.PII_TYPE = 'NONE', 
+            GOVERNANCE.TAGS.AI_ALLOWED = 'TRUE';
+
+ALTER TABLE RAW_DEV.RAW_TPCH.ORDERS_RAW MODIFY COLUMN O_CLERK
+    SET TAG GOVERNANCE.TAGS.PII_TYPE = 'LOW', 
+            GOVERNANCE.TAGS.AI_ALLOWED = 'TRUE';
+
+-- ─────────────────────────────────────────────────────────────────────────────
+-- LINEITEM TABLE
+-- Contract: tpch_lineitem_v1
+-- ─────────────────────────────────────────────────────────────────────────────
+
+CREATE OR REPLACE TABLE RAW_DEV.RAW_TPCH.LINEITEM_RAW (
+    -- Business Columns
+    L_ORDERKEY      NUMBER(38,0) NOT NULL,
+    L_PARTKEY       NUMBER(38,0) NOT NULL,
+    L_SUPPKEY       NUMBER(38,0) NOT NULL,
+    L_LINENUMBER    NUMBER(38,0) NOT NULL,
+    L_QUANTITY      NUMBER(12,2) NOT NULL,
+    L_EXTENDEDPRICE NUMBER(12,2) NOT NULL,
+    L_DISCOUNT      NUMBER(12,2) NOT NULL,
+    L_TAX           NUMBER(12,2) NOT NULL,
+    L_RETURNFLAG    VARCHAR(1) NOT NULL,
+    L_LINESTATUS    VARCHAR(1) NOT NULL,
+    L_SHIPDATE      DATE NOT NULL,
+    L_COMMITDATE    DATE NOT NULL,
+    L_RECEIPTDATE   DATE NOT NULL,
+    L_SHIPINSTRUCT  VARCHAR(25) NOT NULL,
+    L_SHIPMODE      VARCHAR(10) NOT NULL,
+    L_COMMENT       VARCHAR(44),
+    
+    -- System Columns
+    _LOADED_AT      TIMESTAMP_NTZ NOT NULL DEFAULT CURRENT_TIMESTAMP(),
+    _SOURCE_FILE    VARCHAR(1024) DEFAULT 'SNOWFLAKE_SAMPLE_DATA.TPCH_SF1',
+    _ROW_HASH       VARCHAR(64),
+    _IS_CURRENT     BOOLEAN DEFAULT TRUE,
+    
+    -- Constraints
+    PRIMARY KEY (L_ORDERKEY, L_LINENUMBER)
+)
+COMMENT = 'TPCH Line Item data - Contract: tpch_lineitem_v1'
+WITH TAG (
+    GOVERNANCE.TAGS.CONTRACT_ID = 'tpch_lineitem_v1',
+    GOVERNANCE.TAGS.CONTRACT_VERSION = '1.0.0',
+    GOVERNANCE.TAGS.DATA_CLASSIFICATION = 'CONFIDENTIAL'
+);
+
+-- Apply column-level tags
+ALTER TABLE RAW_DEV.RAW_TPCH.LINEITEM_RAW MODIFY COLUMN L_ORDERKEY
+    SET TAG GOVERNANCE.TAGS.PII_TYPE = 'NONE', 
+            GOVERNANCE.TAGS.AI_ALLOWED = 'TRUE';
+
+ALTER TABLE RAW_DEV.RAW_TPCH.LINEITEM_RAW MODIFY COLUMN L_EXTENDEDPRICE
+    SET TAG GOVERNANCE.TAGS.PII_TYPE = 'NONE', 
+            GOVERNANCE.TAGS.AI_ALLOWED = 'TRUE';
+
+-- ─────────────────────────────────────────────────────────────────────────────
+-- VERIFICATION
+-- ─────────────────────────────────────────────────────────────────────────────
+
+SELECT 'RAW Layer Tables Created Successfully' AS STATUS;
+
+SHOW TABLES IN SCHEMA RAW_DEV.RAW_TPCH;
+
+-- Verify tags are applied
+SELECT 
+    TABLE_NAME,
+    TAG_NAME,
+    TAG_VALUE
+FROM TABLE(
+    INFORMATION_SCHEMA.TAG_REFERENCES_ALL_COLUMNS(
+        'RAW_DEV.RAW_TPCH.CUSTOMER_RAW', 
+        'TABLE'
+    )
+)
+ORDER BY TABLE_NAME, TAG_NAME;

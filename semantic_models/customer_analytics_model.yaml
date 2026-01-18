@@ -1,0 +1,285 @@
+# ============================================================================
+# CORTEX ANALYST SEMANTIC MODEL: Customer Analytics
+# ============================================================================
+# This semantic model enables natural language queries on customer data
+# for segmentation, RFM analysis, and churn prediction through Cortex Analyst.
+# All customer PII is pseudonymized for AI safety.
+# ============================================================================
+
+name: customer_analytics
+description: |
+  Customer analytics semantic model for AI-powered customer insights.
+  Includes RFM scoring, segmentation, and engagement metrics.
+  All customer PII is pseudonymized, making this safe for AI training and embeddings.
+
+version: 1.0.0
+owner: demo-team@company.com
+
+# ─────────────────────────────────────────────────────────────────────────────
+# DATABASE CONFIGURATION
+# ─────────────────────────────────────────────────────────────────────────────
+database: SEM_DEV
+schema: SEM_CUSTOMER
+
+# ─────────────────────────────────────────────────────────────────────────────
+# TABLES
+# ─────────────────────────────────────────────────────────────────────────────
+tables:
+  - name: VW_CUSTOMER_ANALYTICS
+    description: Customer analytics view with RFM scoring and segmentation
+    base_table: SEM_DEV.SEM_CUSTOMER.VW_CUSTOMER_ANALYTICS
+    
+    # Dimensions
+    dimensions:
+      - name: customer_id
+        synonyms:
+          - customer
+          - customer identifier
+        description: Pseudonymized customer identifier (safe for AI)
+        expr: CUSTOMER_ID
+        data_type: VARCHAR
+        
+      - name: market_segment
+        synonyms:
+          - segment
+          - industry
+          - vertical
+        description: Customer market segment (AUTOMOBILE, BUILDING, FURNITURE, HOUSEHOLD, MACHINERY)
+        expr: MARKET_SEGMENT
+        data_type: VARCHAR
+        
+      - name: customer_tier
+        synonyms:
+          - tier
+          - account tier
+          - customer level
+        description: Customer value tier based on account balance (PREMIUM, STANDARD, BASIC, CREDIT_RISK)
+        expr: CUSTOMER_TIER
+        data_type: VARCHAR
+        
+      - name: balance_status
+        synonyms:
+          - credit status
+          - account status
+        description: Account balance status (POSITIVE, ZERO, NEGATIVE)
+        expr: BALANCE_STATUS
+        data_type: VARCHAR
+        
+      - name: region
+        synonyms:
+          - customer region
+          - geographic region
+          - area
+        description: Geographic region (AFRICA, AMERICA, ASIA, EUROPE, MIDDLE EAST)
+        expr: REGION_NAME
+        data_type: VARCHAR
+        
+      - name: region_group
+        synonyms:
+          - territory
+        description: Simplified region grouping (AMER, EMEA, APAC)
+        expr: REGION_GROUP
+        data_type: VARCHAR
+        
+      - name: nation
+        synonyms:
+          - country
+          - customer country
+        description: Customer's nation/country
+        expr: NATION_NAME
+        data_type: VARCHAR
+        
+      - name: activity_status
+        synonyms:
+          - status
+          - engagement status
+        description: Customer activity status (ACTIVE, INACTIVE, AT_RISK, CHURNED)
+        expr: ACTIVITY_STATUS
+        data_type: VARCHAR
+        
+      - name: customer_segment
+        synonyms:
+          - rfm segment
+          - customer type
+          - segment name
+        description: Customer segment derived from RFM analysis (CHAMPION, LOYAL, AT_RISK, LOST, etc.)
+        expr: CUSTOMER_SEGMENT
+        data_type: VARCHAR
+
+    # Measures
+    measures:
+      - name: customer_count
+        synonyms:
+          - customers
+          - number of customers
+          - total customers
+        description: Count of customers
+        expr: COUNT(DISTINCT CUSTOMER_ID)
+        data_type: NUMBER
+        default_aggregation: count_distinct
+        
+      - name: total_orders
+        synonyms:
+          - orders
+          - order count
+        description: Total number of orders placed by customers
+        expr: SUM(TOTAL_ORDERS)
+        data_type: NUMBER
+        default_aggregation: sum
+        
+      - name: total_lifetime_value
+        synonyms:
+          - ltv
+          - lifetime value
+          - clv
+          - customer lifetime value
+        description: Total lifetime value across customers
+        expr: SUM(LIFETIME_VALUE)
+        data_type: NUMBER
+        default_aggregation: sum
+        
+      - name: average_lifetime_value
+        synonyms:
+          - avg ltv
+          - average clv
+        description: Average customer lifetime value
+        expr: AVG(LIFETIME_VALUE)
+        data_type: NUMBER
+        default_aggregation: avg
+        
+      - name: average_order_value
+        synonyms:
+          - aov
+          - avg order
+        description: Average order value per customer
+        expr: AVG(AVG_ORDER_VALUE)
+        data_type: NUMBER
+        default_aggregation: avg
+        
+      - name: total_items_purchased
+        synonyms:
+          - items purchased
+          - units bought
+        description: Total items purchased by customers
+        expr: SUM(TOTAL_ITEMS_PURCHASED)
+        data_type: NUMBER
+        default_aggregation: sum
+        
+      - name: average_tenure_days
+        synonyms:
+          - tenure
+          - customer age
+        description: Average customer tenure in days
+        expr: AVG(TENURE_DAYS)
+        data_type: NUMBER
+        default_aggregation: avg
+        
+      - name: average_recency_days
+        synonyms:
+          - recency
+          - days since last order
+        description: Average days since last order
+        expr: AVG(RECENCY_DAYS)
+        data_type: NUMBER
+        default_aggregation: avg
+        
+      - name: average_recency_score
+        synonyms:
+          - recency score
+          - r score
+        description: Average recency score (1-5 scale, 5 is best)
+        expr: AVG(RECENCY_SCORE)
+        data_type: NUMBER
+        default_aggregation: avg
+        
+      - name: average_frequency_score
+        synonyms:
+          - frequency score
+          - f score
+        description: Average frequency score (1-5 scale, 5 is best)
+        expr: AVG(FREQUENCY_SCORE)
+        data_type: NUMBER
+        default_aggregation: avg
+        
+      - name: average_monetary_score
+        synonyms:
+          - monetary score
+          - m score
+        description: Average monetary score (1-5 scale, 5 is best)
+        expr: AVG(MONETARY_SCORE)
+        data_type: NUMBER
+        default_aggregation: avg
+
+# ─────────────────────────────────────────────────────────────────────────────
+# SAMPLE QUESTIONS FOR TRAINING
+# ─────────────────────────────────────────────────────────────────────────────
+sample_questions:
+  - question: "How many customers do we have?"
+    sql: |
+      SELECT COUNT(DISTINCT CUSTOMER_ID) as customer_count
+      FROM SEM_DEV.SEM_CUSTOMER.VW_CUSTOMER_ANALYTICS
+      
+  - question: "Show me customers by segment"
+    sql: |
+      SELECT CUSTOMER_SEGMENT, COUNT(*) as customer_count
+      FROM SEM_DEV.SEM_CUSTOMER.VW_CUSTOMER_ANALYTICS
+      GROUP BY CUSTOMER_SEGMENT
+      ORDER BY customer_count DESC
+      
+  - question: "Which customers are at risk of churning?"
+    sql: |
+      SELECT CUSTOMER_SEGMENT, REGION_NAME, COUNT(*) as customer_count, AVG(LIFETIME_VALUE) as avg_ltv
+      FROM SEM_DEV.SEM_CUSTOMER.VW_CUSTOMER_ANALYTICS
+      WHERE CUSTOMER_SEGMENT IN ('AT_RISK', 'HIGH_VALUE_AT_RISK')
+      GROUP BY CUSTOMER_SEGMENT, REGION_NAME
+      ORDER BY avg_ltv DESC
+      
+  - question: "What is the average lifetime value by market segment?"
+    sql: |
+      SELECT MARKET_SEGMENT, 
+             COUNT(*) as customers,
+             AVG(LIFETIME_VALUE) as avg_ltv,
+             SUM(LIFETIME_VALUE) as total_ltv
+      FROM SEM_DEV.SEM_CUSTOMER.VW_CUSTOMER_ANALYTICS
+      GROUP BY MARKET_SEGMENT
+      ORDER BY avg_ltv DESC
+      
+  - question: "Show me RFM scores by region"
+    sql: |
+      SELECT REGION_NAME,
+             AVG(RECENCY_SCORE) as avg_recency,
+             AVG(FREQUENCY_SCORE) as avg_frequency,
+             AVG(MONETARY_SCORE) as avg_monetary
+      FROM SEM_DEV.SEM_CUSTOMER.VW_CUSTOMER_ANALYTICS
+      GROUP BY REGION_NAME
+      ORDER BY avg_monetary DESC
+      
+  - question: "How many customers have churned?"
+    sql: |
+      SELECT COUNT(*) as churned_customers
+      FROM SEM_DEV.SEM_CUSTOMER.VW_CUSTOMER_ANALYTICS
+      WHERE CUSTOMER_SEGMENT = 'LOST'
+
+# ─────────────────────────────────────────────────────────────────────────────
+# FILTERS (Common WHERE clauses)
+# ─────────────────────────────────────────────────────────────────────────────
+filters:
+  - name: active_customers
+    description: Only active customers
+    expr: ACTIVITY_STATUS = 'ACTIVE'
+    
+  - name: at_risk_customers
+    description: Customers at risk of churning
+    expr: CUSTOMER_SEGMENT IN ('AT_RISK', 'HIGH_VALUE_AT_RISK')
+    
+  - name: premium_customers
+    description: Premium tier customers
+    expr: CUSTOMER_TIER = 'PREMIUM'
+    
+  - name: champions
+    description: Champion segment customers (best customers)
+    expr: CUSTOMER_SEGMENT = 'CHAMPION'
+    
+  - name: new_customers
+    description: New customers
+    expr: CUSTOMER_SEGMENT = 'NEW'

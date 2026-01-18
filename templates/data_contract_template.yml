@@ -1,0 +1,179 @@
+# ============================================================================
+# DATA CONTRACT TEMPLATE
+# ============================================================================
+# This template defines the structure for producer data contracts.
+# Copy this file and customize for your specific data source.
+#
+# Naming convention: <system>_<entity>_v<major_version>.yml
+# Example: crm_customer_v1.yml, erp_orders_v2.yml
+# ============================================================================
+
+contract:
+  # ─────────────────────────────────────────────────────────────────────────
+  # IDENTITY & OWNERSHIP
+  # ─────────────────────────────────────────────────────────────────────────
+  id: <system>_<entity>_v1                    # Unique identifier (lowercase, underscores)
+  version: 1.0.0                               # Semantic version (MAJOR.MINOR.PATCH)
+  status: draft                                # draft | review | approved | active | deprecated | retired
+  
+  producer:
+    system: <SOURCE_SYSTEM_NAME>               # e.g., CRM_SALESFORCE, ERP_SAP, etc.
+    team: <Team Name>                          # Owning team
+    owner: team-email@company.com              # Team contact email
+    slack_channel: "#team-data-channel"        # Support channel
+  
+  # ─────────────────────────────────────────────────────────────────────────
+  # SCHEMA DEFINITION
+  # ─────────────────────────────────────────────────────────────────────────
+  schema:
+    database: RAW_${REGION}                    # Supports region substitution
+    schema: RAW_<SYSTEM>                       # Schema name
+    table: <ENTITY>_RAW                        # Table name
+    
+    columns:
+      # ── Primary Key Column ──
+      - name: <ENTITY>_ID
+        type: VARCHAR(64)
+        description: "Primary identifier from source system"
+        constraints:
+          - not_null
+          - unique
+        tests:
+          - type: regex
+            pattern: "^[A-Z0-9-]+$"
+        tags:
+          DATA_CLASSIFICATION: INTERNAL
+          PII_TYPE: NONE
+          AI_ALLOWED: "TRUE"
+      
+      # ── Business Columns ──
+      - name: <COLUMN_NAME>
+        type: VARCHAR(256)                     # VARCHAR, NUMBER, TIMESTAMP_NTZ, etc.
+        description: "Description of this column"
+        constraints: []                        # not_null, unique, primary_key
+        tests: []                              # Optional validation tests
+        tags:
+          DATA_CLASSIFICATION: INTERNAL        # PUBLIC | INTERNAL | CONFIDENTIAL | RESTRICTED
+          PII_TYPE: NONE                       # NONE | LOW | MODERATE | HIGH
+          AI_ALLOWED: "TRUE"                   # TRUE | FALSE | PSEUDONYMIZED_ONLY
+      
+      # ── PII Column Example ──
+      - name: EMAIL
+        type: VARCHAR(256)
+        description: "User email address"
+        constraints:
+          - not_null
+        tests:
+          - type: regex
+            pattern: "^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$"
+        tags:
+          DATA_CLASSIFICATION: CONFIDENTIAL
+          PII_TYPE: MODERATE
+          AI_ALLOWED: PSEUDONYMIZED_ONLY
+          RESIDENCY_REGION: ORIGIN
+      
+      # ── Timestamp Columns ──
+      - name: CREATED_AT
+        type: TIMESTAMP_NTZ
+        description: "Record creation timestamp in source"
+        constraints:
+          - not_null
+        tags:
+          DATA_CLASSIFICATION: INTERNAL
+          PII_TYPE: NONE
+          AI_ALLOWED: "TRUE"
+      
+      # ── System Columns (auto-populated) ──
+      - name: _LOADED_AT
+        type: TIMESTAMP_NTZ
+        description: "Snowflake ingestion timestamp"
+        constraints:
+          - not_null
+        system_managed: true
+        tags:
+          DATA_CLASSIFICATION: INTERNAL
+          PII_TYPE: NONE
+          AI_ALLOWED: "TRUE"
+        
+      - name: _SOURCE_FILE
+        type: VARCHAR(1024)
+        description: "Source file or batch identifier"
+        system_managed: true
+        tags:
+          DATA_CLASSIFICATION: INTERNAL
+          PII_TYPE: NONE
+          AI_ALLOWED: "TRUE"
+
+  # ─────────────────────────────────────────────────────────────────────────
+  # SERVICE LEVEL AGREEMENTS
+  # ─────────────────────────────────────────────────────────────────────────
+  sla:
+    freshness:
+      max_age_minutes: 60                      # Maximum age of data
+      measurement: "MAX(_LOADED_AT) vs CURRENT_TIMESTAMP()"
+      
+    completeness:
+      threshold_percent: 99.0                  # Minimum completeness %
+      critical_columns:
+        - <ENTITY>_ID                          # Columns that must be present
+        - CREATED_AT
+        
+    availability:
+      uptime_percent: 99.9                     # Target availability
+      maintenance_window: "Sunday 02:00-04:00 UTC"
+      
+    volume:
+      expected_daily_rows:
+        min: 1000                              # Minimum expected rows
+        max: 100000                            # Maximum expected rows
+      alert_on_variance_percent: 25            # Alert if volume varies > 25%
+
+  # ─────────────────────────────────────────────────────────────────────────
+  # QUALITY RULES
+  # ─────────────────────────────────────────────────────────────────────────
+  quality_rules:
+    - id: qr_001
+      name: primary_key_not_null
+      type: column_check
+      column: <ENTITY>_ID
+      sql: "<ENTITY>_ID IS NOT NULL"
+      severity: error
+      
+    - id: qr_002
+      name: no_duplicates
+      type: table_check
+      sql: "COUNT(*) = COUNT(DISTINCT <ENTITY>_ID)"
+      severity: error
+      
+    - id: qr_003
+      name: valid_timestamps
+      type: column_check
+      column: CREATED_AT
+      sql: "CREATED_AT <= CURRENT_TIMESTAMP()"
+      severity: warning
+
+  # ─────────────────────────────────────────────────────────────────────────
+  # GOVERNANCE & COMPLIANCE
+  # ─────────────────────────────────────────────────────────────────────────
+  governance:
+    classification: INTERNAL                   # Overall data classification
+    residency_requirements:
+      - "Data must remain in origin region"    # Residency rules
+    retention_days: 2555                       # 7 years default
+    ai_eligibility: PSEUDONYMIZED_ONLY         # AI usage constraints
+    
+  # ─────────────────────────────────────────────────────────────────────────
+  # LINEAGE & DEPENDENCIES
+  # ─────────────────────────────────────────────────────────────────────────
+  lineage:
+    source_systems:
+      - name: <Source System Name>
+        connection: <CONNECTION_NAME>
+        extraction: CDC                        # CDC, BATCH, STREAMING
+        
+    downstream_dependencies: []                # Populated as consumers register
+
+  # ─────────────────────────────────────────────────────────────────────────
+  # CONSUMERS (registered via consumer portal)
+  # ─────────────────────────────────────────────────────────────────────────
+  consumers: []                                # Auto-populated when consumers register

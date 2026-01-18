@@ -1,0 +1,230 @@
+# ============================================================================
+# DATA CONTRACT: TPCH Supplier Data
+# ============================================================================
+# Producer: Demo Data Engineering Team
+# Source: Snowflake Sample TPCH Dataset
+# Updated: 2026-01-18
+# ============================================================================
+
+contract:
+  # ─────────────────────────────────────────────────────────────────────────
+  # IDENTITY & OWNERSHIP
+  # ─────────────────────────────────────────────────────────────────────────
+  id: tpch_supplier_v1
+  version: 1.0.0
+  status: active
+  
+  producer:
+    system: SNOWFLAKE_SAMPLE_TPCH
+    team: Demo Data Engineering
+    owner: demo-team@company.com
+    slack_channel: "#demo-data-contracts"
+  
+  # ─────────────────────────────────────────────────────────────────────────
+  # SCHEMA DEFINITION
+  # ─────────────────────────────────────────────────────────────────────────
+  schema:
+    database: RAW_${ENV}
+    schema: RAW_TPCH
+    table: SUPPLIER_RAW
+    
+    columns:
+      - name: S_SUPPKEY
+        type: NUMBER(38,0)
+        description: "Unique supplier identifier (primary key)"
+        constraints:
+          - not_null
+          - unique
+          - primary_key
+        tags:
+          DATA_CLASSIFICATION: INTERNAL
+          PII_TYPE: NONE
+          AI_ALLOWED: "TRUE"
+          
+      - name: S_NAME
+        type: VARCHAR(25)
+        description: "Supplier name"
+        constraints:
+          - not_null
+        tags:
+          DATA_CLASSIFICATION: CONFIDENTIAL
+          PII_TYPE: LOW
+          AI_ALLOWED: "TRUE"
+          
+      - name: S_ADDRESS
+        type: VARCHAR(40)
+        description: "Supplier address"
+        constraints:
+          - not_null
+        tags:
+          DATA_CLASSIFICATION: CONFIDENTIAL
+          PII_TYPE: LOW
+          AI_ALLOWED: "FALSE"
+          RESIDENCY_REGION: ORIGIN
+          
+      - name: S_NATIONKEY
+        type: NUMBER(38,0)
+        description: "Foreign key to nation table"
+        constraints:
+          - not_null
+          - foreign_key
+        tags:
+          DATA_CLASSIFICATION: INTERNAL
+          PII_TYPE: NONE
+          AI_ALLOWED: "TRUE"
+          
+      - name: S_PHONE
+        type: VARCHAR(15)
+        description: "Supplier phone number"
+        constraints:
+          - not_null
+        tags:
+          DATA_CLASSIFICATION: CONFIDENTIAL
+          PII_TYPE: LOW
+          AI_ALLOWED: "FALSE"
+          
+      - name: S_ACCTBAL
+        type: NUMBER(12,2)
+        description: "Supplier account balance"
+        constraints:
+          - not_null
+        tags:
+          DATA_CLASSIFICATION: CONFIDENTIAL
+          PII_TYPE: NONE
+          AI_ALLOWED: "TRUE"
+          
+      - name: S_COMMENT
+        type: VARCHAR(101)
+        description: "Supplier comments"
+        constraints: []
+        tags:
+          DATA_CLASSIFICATION: INTERNAL
+          PII_TYPE: NONE
+          AI_ALLOWED: "TRUE"
+          
+      # ── System Columns ──
+      - name: _LOADED_AT
+        type: TIMESTAMP_NTZ
+        description: "Snowflake ingestion timestamp"
+        constraints:
+          - not_null
+        system_managed: true
+        
+      - name: _SOURCE_FILE
+        type: VARCHAR(1024)
+        description: "Source file or batch identifier"
+        system_managed: true
+        
+      - name: _ROW_HASH
+        type: VARCHAR(64)
+        description: "SHA256 hash of business columns for change detection"
+        system_managed: true
+        
+      - name: _IS_CURRENT
+        type: BOOLEAN
+        description: "Flag indicating if this is the current record version"
+        system_managed: true
+
+  # ─────────────────────────────────────────────────────────────────────────
+  # SERVICE LEVEL AGREEMENTS
+  # ─────────────────────────────────────────────────────────────────────────
+  sla:
+    freshness:
+      max_age_minutes: 240  # 4 hours - master data
+      measurement: "MAX(_LOADED_AT) vs CURRENT_TIMESTAMP()"
+      
+    completeness:
+      threshold_percent: 99.9
+      critical_columns:
+        - S_SUPPKEY
+        - S_NAME
+        - S_NATIONKEY
+        
+    availability:
+      uptime_percent: 99.9
+      maintenance_window: "Sunday 02:00-04:00 UTC"
+      
+    volume:
+      expected_daily_rows:
+        min: 8000
+        max: 12000
+      alert_on_variance_percent: 25
+
+  # ─────────────────────────────────────────────────────────────────────────
+  # QUALITY RULES
+  # ─────────────────────────────────────────────────────────────────────────
+  quality_rules:
+    - id: qr_001
+      name: valid_suppkey
+      type: column_check
+      column: S_SUPPKEY
+      sql: "S_SUPPKEY > 0"
+      severity: error
+      
+    - id: qr_002
+      name: no_duplicate_suppliers
+      type: table_check
+      sql: "COUNT(*) = COUNT(DISTINCT S_SUPPKEY) OR SUM(CASE WHEN _IS_CURRENT THEN 1 ELSE 0 END) = COUNT(DISTINCT S_SUPPKEY)"
+      severity: error
+      
+    - id: qr_003
+      name: valid_nation_reference
+      type: cross_table_check
+      sql: |
+        SELECT COUNT(*) = 0 FROM RAW_${ENV}.RAW_TPCH.SUPPLIER_RAW s
+        WHERE _IS_CURRENT = TRUE
+        AND NOT EXISTS (
+          SELECT 1 FROM RAW_${ENV}.RAW_TPCH.NATION_RAW n 
+          WHERE n.N_NATIONKEY = s.S_NATIONKEY AND n._IS_CURRENT = TRUE
+        )
+      severity: error
+      
+    - id: qr_004
+      name: phone_format
+      type: column_check
+      column: S_PHONE
+      sql: "S_PHONE REGEXP '^[0-9]{2}-[0-9]{3}-[0-9]{3}-[0-9]{4}$'"
+      severity: warning
+
+  # ─────────────────────────────────────────────────────────────────────────
+  # GOVERNANCE & COMPLIANCE
+  # ─────────────────────────────────────────────────────────────────────────
+  governance:
+    classification: CONFIDENTIAL
+    residency_requirements:
+      - "Supplier contact information must follow regional data policies"
+    retention_days: 2555  # 7 years
+    ai_eligibility: PSEUDONYMIZED_ONLY
+    
+  # ─────────────────────────────────────────────────────────────────────────
+  # LINEAGE & DEPENDENCIES
+  # ─────────────────────────────────────────────────────────────────────────
+  lineage:
+    source_systems:
+      - name: Snowflake Sample Data TPCH
+        connection: SNOWFLAKE_SAMPLE_DATA.TPCH_SF1
+        extraction: DIRECT_LOAD
+        
+    upstream_dependencies:
+      - contract_id: tpch_nation_v1
+        type: reference
+        
+    downstream_dependencies:
+      - contract_id: curated_supplier_dim_v1
+        type: transformation
+      - contract_id: sem_supplier_analytics_v1
+        type: product
+
+  # ─────────────────────────────────────────────────────────────────────────
+  # CONSUMERS
+  # ─────────────────────────────────────────────────────────────────────────
+  consumers:
+    - team: Supply Chain
+      contact: supply-chain@company.com
+      use_case: Supplier performance analysis
+      access_level: read_full
+      
+    - team: Procurement
+      contact: procurement@company.com
+      use_case: Supplier selection and management
+      access_level: read_full

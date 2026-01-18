@@ -1,0 +1,261 @@
+# ============================================================================
+# DATA CONTRACT: CRM Customer Data
+# ============================================================================
+# Producer: Customer Data Platform Team
+# Source: Salesforce CRM
+# Updated: 2026-01-18
+# ============================================================================
+
+contract:
+  # ─────────────────────────────────────────────────────────────────────────
+  # IDENTITY & OWNERSHIP
+  # ─────────────────────────────────────────────────────────────────────────
+  id: crm_customer_v1
+  version: 1.0.0
+  status: active
+  
+  producer:
+    system: CRM_SALESFORCE
+    team: Customer Data Platform
+    owner: cdp-team@company.com
+    slack_channel: "#cdp-data-contracts"
+  
+  # ─────────────────────────────────────────────────────────────────────────
+  # SCHEMA DEFINITION
+  # ─────────────────────────────────────────────────────────────────────────
+  schema:
+    database: RAW_${REGION}
+    schema: RAW_CRM
+    table: CUSTOMER_RAW
+    
+    columns:
+      - name: CUSTOMER_ID
+        type: VARCHAR(64)
+        description: "Unique customer identifier from Salesforce"
+        constraints:
+          - not_null
+          - unique
+        tests:
+          - type: regex
+            pattern: "^CUST-[A-Z0-9]{8}$"
+        tags:
+          DATA_CLASSIFICATION: INTERNAL
+          PII_TYPE: NONE
+          AI_ALLOWED: "TRUE"
+          
+      - name: FIRST_NAME
+        type: VARCHAR(128)
+        description: "Customer first name"
+        constraints:
+          - not_null
+        tags:
+          DATA_CLASSIFICATION: CONFIDENTIAL
+          PII_TYPE: MODERATE
+          AI_ALLOWED: PSEUDONYMIZED_ONLY
+          RESIDENCY_REGION: ORIGIN
+          
+      - name: LAST_NAME
+        type: VARCHAR(128)
+        description: "Customer last name"
+        constraints:
+          - not_null
+        tags:
+          DATA_CLASSIFICATION: CONFIDENTIAL
+          PII_TYPE: MODERATE
+          AI_ALLOWED: PSEUDONYMIZED_ONLY
+          RESIDENCY_REGION: ORIGIN
+          
+      - name: EMAIL
+        type: VARCHAR(256)
+        description: "Customer primary email address"
+        constraints:
+          - not_null
+        tests:
+          - type: regex
+            pattern: "^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$"
+        tags:
+          DATA_CLASSIFICATION: CONFIDENTIAL
+          PII_TYPE: MODERATE
+          AI_ALLOWED: PSEUDONYMIZED_ONLY
+          RESIDENCY_REGION: ORIGIN
+          
+      - name: PHONE_NUMBER
+        type: VARCHAR(32)
+        description: "Customer phone number"
+        constraints: []
+        tags:
+          DATA_CLASSIFICATION: CONFIDENTIAL
+          PII_TYPE: LOW
+          AI_ALLOWED: "FALSE"
+          RESIDENCY_REGION: ORIGIN
+          
+      - name: COUNTRY_CODE
+        type: VARCHAR(3)
+        description: "ISO 3166-1 alpha-3 country code"
+        constraints:
+          - not_null
+        tags:
+          DATA_CLASSIFICATION: INTERNAL
+          PII_TYPE: NONE
+          AI_ALLOWED: "TRUE"
+          
+      - name: MARKET_SEGMENT
+        type: VARCHAR(64)
+        description: "Customer market segment classification"
+        constraints: []
+        tags:
+          DATA_CLASSIFICATION: INTERNAL
+          PII_TYPE: NONE
+          AI_ALLOWED: "TRUE"
+          
+      - name: ACCOUNT_STATUS
+        type: VARCHAR(32)
+        description: "Account status (ACTIVE, INACTIVE, SUSPENDED)"
+        constraints:
+          - not_null
+        tests:
+          - type: accepted_values
+            values: ["ACTIVE", "INACTIVE", "SUSPENDED"]
+        tags:
+          DATA_CLASSIFICATION: INTERNAL
+          PII_TYPE: NONE
+          AI_ALLOWED: "TRUE"
+          
+      - name: CREATED_AT
+        type: TIMESTAMP_NTZ
+        description: "Record creation timestamp in Salesforce"
+        constraints:
+          - not_null
+        tags:
+          DATA_CLASSIFICATION: INTERNAL
+          PII_TYPE: NONE
+          AI_ALLOWED: "TRUE"
+          
+      - name: UPDATED_AT
+        type: TIMESTAMP_NTZ
+        description: "Record last update timestamp in Salesforce"
+        constraints: []
+        tags:
+          DATA_CLASSIFICATION: INTERNAL
+          PII_TYPE: NONE
+          AI_ALLOWED: "TRUE"
+          
+      - name: _LOADED_AT
+        type: TIMESTAMP_NTZ
+        description: "Snowflake ingestion timestamp"
+        constraints:
+          - not_null
+        system_managed: true
+        
+      - name: _SOURCE_FILE
+        type: VARCHAR(1024)
+        description: "Source file or batch identifier"
+        system_managed: true
+
+  # ─────────────────────────────────────────────────────────────────────────
+  # SERVICE LEVEL AGREEMENTS
+  # ─────────────────────────────────────────────────────────────────────────
+  sla:
+    freshness:
+      max_age_minutes: 60
+      measurement: "MAX(_LOADED_AT) vs CURRENT_TIMESTAMP()"
+      
+    completeness:
+      threshold_percent: 99.5
+      critical_columns:
+        - CUSTOMER_ID
+        - EMAIL
+        - CREATED_AT
+        
+    availability:
+      uptime_percent: 99.9
+      maintenance_window: "Sunday 02:00-04:00 UTC"
+      
+    volume:
+      expected_daily_rows:
+        min: 10000
+        max: 500000
+      alert_on_variance_percent: 25
+
+  # ─────────────────────────────────────────────────────────────────────────
+  # QUALITY RULES
+  # ─────────────────────────────────────────────────────────────────────────
+  quality_rules:
+    - id: qr_001
+      name: valid_email_format
+      type: column_check
+      column: EMAIL
+      sql: "EMAIL REGEXP '^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$'"
+      severity: error
+      
+    - id: qr_002
+      name: no_duplicate_customers
+      type: table_check
+      sql: "COUNT(*) = COUNT(DISTINCT CUSTOMER_ID)"
+      severity: error
+      
+    - id: qr_003
+      name: created_not_future
+      type: column_check
+      column: CREATED_AT
+      sql: "CREATED_AT <= CURRENT_TIMESTAMP()"
+      severity: warning
+      
+    - id: qr_004
+      name: valid_country_code
+      type: column_check
+      column: COUNTRY_CODE
+      sql: "LENGTH(COUNTRY_CODE) = 3 AND COUNTRY_CODE = UPPER(COUNTRY_CODE)"
+      severity: warning
+      
+    - id: qr_005
+      name: valid_account_status
+      type: column_check
+      column: ACCOUNT_STATUS
+      sql: "ACCOUNT_STATUS IN ('ACTIVE', 'INACTIVE', 'SUSPENDED')"
+      severity: error
+
+  # ─────────────────────────────────────────────────────────────────────────
+  # GOVERNANCE & COMPLIANCE
+  # ─────────────────────────────────────────────────────────────────────────
+  governance:
+    classification: CONFIDENTIAL
+    residency_requirements:
+      - "EU customer data must remain in EU regions"
+      - "PII cannot leave origin region without pseudonymization"
+    retention_days: 2555  # 7 years
+    ai_eligibility: PSEUDONYMIZED_ONLY
+    
+  # ─────────────────────────────────────────────────────────────────────────
+  # LINEAGE & DEPENDENCIES
+  # ─────────────────────────────────────────────────────────────────────────
+  lineage:
+    source_systems:
+      - name: Salesforce CRM
+        connection: SFDC_CDC_CONNECTOR
+        extraction: CDC
+        
+    downstream_dependencies:
+      - contract_id: curated_customer_entity_v1
+        type: transformation
+      - contract_id: sem_customer_analytics_v1
+        type: product
+
+  # ─────────────────────────────────────────────────────────────────────────
+  # CONSUMERS
+  # ─────────────────────────────────────────────────────────────────────────
+  consumers:
+    - team: Analytics Platform
+      contact: analytics@company.com
+      use_case: Customer segmentation and churn prediction
+      access_level: read_masked
+      
+    - team: Marketing Operations
+      contact: marketing-ops@company.com  
+      use_case: Campaign targeting and personalization
+      access_level: read_masked
+      
+    - team: Customer Success
+      contact: cs-data@company.com
+      use_case: Customer health scoring
+      access_level: read_masked

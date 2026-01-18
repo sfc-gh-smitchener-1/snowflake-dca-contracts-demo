@@ -1,0 +1,211 @@
+# ============================================================================
+# PRODUCT CONTRACT: Customer Analytics Semantic View
+# ============================================================================
+# Owner: Customer Analytics Platform Team
+# Description: Privacy-safe customer analytics for BI and AI workloads
+# Updated: 2026-01-18
+# ============================================================================
+
+product:
+  # ─────────────────────────────────────────────────────────────────────────
+  # IDENTITY & OWNERSHIP
+  # ─────────────────────────────────────────────────────────────────────────
+  id: sem_customer_analytics_v1
+  version: 1.0.0
+  status: active
+  
+  owner:
+    team: Customer Analytics Platform
+    contact: cap-team@company.com
+    slack_channel: "#customer-analytics"
+    
+  description: |
+    Policy-aware customer analytics semantic view for BI tools and APIs.
+    Provides pre-aggregated, privacy-safe customer metrics and segments.
+    
+    Key features:
+    - No raw PII exposed (all identifiers pseudonymized)
+    - Pre-computed segments and metrics
+    - Optimized for Tableau, Looker, and Power BI
+    - Safe for AI/ML embedding workloads
+    
+  # ─────────────────────────────────────────────────────────────────────────
+  # OUTPUT SPECIFICATION
+  # ─────────────────────────────────────────────────────────────────────────
+  output:
+    type: secure_view
+    database: SEM_${REGION}
+    schema: SEM_ANALYTICS
+    object: VW_CUSTOMER_ANALYTICS
+    
+    columns:
+      - name: CUSTOMER_HASH
+        type: VARCHAR(64)
+        description: "SHA256 hash of customer ID (pseudonymized identifier)"
+        
+      - name: CUSTOMER_SEGMENT
+        type: VARCHAR(64)
+        description: "Customer segment classification (e.g., ENTERPRISE, SMB, CONSUMER)"
+        
+      - name: MARKET_SEGMENT
+        type: VARCHAR(64)
+        description: "Market segment from source system"
+        
+      - name: COUNTRY_CODE
+        type: VARCHAR(3)
+        description: "ISO country code"
+        
+      - name: REGION
+        type: VARCHAR(32)
+        description: "Geographic region (APAC, EMEA, NA, LATAM)"
+        
+      - name: ACCOUNT_STATUS
+        type: VARCHAR(32)
+        description: "Current account status"
+        
+      - name: TENURE_DAYS
+        type: NUMBER
+        description: "Days since customer creation"
+        
+      - name: LIFETIME_VALUE
+        type: FLOAT
+        description: "Calculated customer lifetime value"
+        
+      - name: TOTAL_ORDERS
+        type: NUMBER
+        description: "Total number of orders"
+        
+      - name: TOTAL_REVENUE
+        type: FLOAT
+        description: "Total revenue from customer"
+        
+      - name: AVG_ORDER_VALUE
+        type: FLOAT
+        description: "Average order value"
+        
+      - name: LAST_ORDER_DATE
+        type: DATE
+        description: "Date of most recent order"
+        
+      - name: CHURN_RISK_SCORE
+        type: FLOAT
+        description: "ML-predicted churn risk (0.0-1.0)"
+        
+      - name: HEALTH_SCORE
+        type: VARCHAR(16)
+        description: "Customer health tier (HEALTHY, AT_RISK, CRITICAL)"
+        
+      - name: AS_OF_DATE
+        type: DATE
+        description: "Data freshness date"
+
+  # ─────────────────────────────────────────────────────────────────────────
+  # LINEAGE
+  # ─────────────────────────────────────────────────────────────────────────
+  lineage:
+    sources:
+      - contract_id: crm_customer_v1
+        layer: RAW
+        
+      - contract_id: curated_customer_entity_v1
+        layer: CURATED
+        
+      - contract_id: orders_raw_v1
+        layer: RAW
+        
+    transformations:
+      - dbt_model: stg_customer
+      - dbt_model: stg_orders
+      - dbt_model: int_customer_orders
+      - dbt_model: fct_customer_metrics
+      - dbt_model: vw_customer_analytics
+
+  # ─────────────────────────────────────────────────────────────────────────
+  # GUARANTEES
+  # ─────────────────────────────────────────────────────────────────────────
+  guarantees:
+    freshness:
+      max_age_hours: 24
+      refresh_schedule: "0 6 * * *"  # 6 AM daily
+      
+    quality:
+      completeness_percent: 99.9
+      
+    availability:
+      uptime_sla: "99.95%"
+
+  # ─────────────────────────────────────────────────────────────────────────
+  # ACCESS CONTROL
+  # ─────────────────────────────────────────────────────────────────────────
+  access:
+    visibility: internal_marketplace
+    
+    allowed_roles:
+      - DATA_ANALYST_${REGION}
+      - BI_DEVELOPER_${REGION}
+      - DATA_SCIENTIST_${REGION}
+      - MARKETING_ANALYST_${REGION}
+      
+    restricted_roles:
+      - EXTERNAL_PARTNER
+      - CONTRACTOR
+      
+    residency: region_only
+
+  # ─────────────────────────────────────────────────────────────────────────
+  # AI CONSTRAINTS
+  # ─────────────────────────────────────────────────────────────────────────
+  ai_constraints:
+    embedding_allowed: true
+    raw_pii_in_output: false
+    vector_table: VEC_CUSTOMER_SEGMENTS
+    model_training_allowed: true
+    notes: |
+      This view is safe for AI/ML workloads because:
+      - Customer identifiers are pseudonymized (SHA256 hash)
+      - No direct PII (names, emails, phones) exposed
+      - Only aggregated metrics and classifications included
+
+  # ─────────────────────────────────────────────────────────────────────────
+  # DOCUMENTATION
+  # ─────────────────────────────────────────────────────────────────────────
+  documentation:
+    wiki_url: https://wiki.company.com/data-products/customer-analytics
+    
+    sample_queries:
+      - name: "Customer Segments by Region"
+        sql: |
+          SELECT 
+            REGION,
+            CUSTOMER_SEGMENT,
+            COUNT(*) AS customer_count,
+            AVG(LIFETIME_VALUE) AS avg_ltv,
+            AVG(CHURN_RISK_SCORE) AS avg_churn_risk
+          FROM SEM_${REGION}.SEM_ANALYTICS.VW_CUSTOMER_ANALYTICS
+          WHERE AS_OF_DATE = CURRENT_DATE()
+          GROUP BY REGION, CUSTOMER_SEGMENT
+          ORDER BY customer_count DESC;
+          
+      - name: "At-Risk Customer Analysis"
+        sql: |
+          SELECT 
+            CUSTOMER_SEGMENT,
+            COUNT(*) AS at_risk_count,
+            SUM(LIFETIME_VALUE) AS at_risk_ltv
+          FROM SEM_${REGION}.SEM_ANALYTICS.VW_CUSTOMER_ANALYTICS
+          WHERE HEALTH_SCORE = 'AT_RISK'
+            AND AS_OF_DATE = CURRENT_DATE()
+          GROUP BY CUSTOMER_SEGMENT
+          ORDER BY at_risk_ltv DESC;
+          
+      - name: "Revenue by Market Segment"
+        sql: |
+          SELECT 
+            MARKET_SEGMENT,
+            SUM(TOTAL_REVENUE) AS total_revenue,
+            COUNT(*) AS customer_count,
+            AVG(AVG_ORDER_VALUE) AS avg_order_value
+          FROM SEM_${REGION}.SEM_ANALYTICS.VW_CUSTOMER_ANALYTICS
+          WHERE ACCOUNT_STATUS = 'ACTIVE'
+          GROUP BY MARKET_SEGMENT
+          ORDER BY total_revenue DESC;

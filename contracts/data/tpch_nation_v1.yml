@@ -1,0 +1,179 @@
+# ============================================================================
+# DATA CONTRACT: TPCH Nation Data
+# ============================================================================
+# Producer: Demo Data Engineering Team
+# Source: Snowflake Sample TPCH Dataset
+# Updated: 2026-01-18
+# ============================================================================
+
+contract:
+  # ─────────────────────────────────────────────────────────────────────────
+  # IDENTITY & OWNERSHIP
+  # ─────────────────────────────────────────────────────────────────────────
+  id: tpch_nation_v1
+  version: 1.0.0
+  status: active
+  
+  producer:
+    system: SNOWFLAKE_SAMPLE_TPCH
+    team: Demo Data Engineering
+    owner: demo-team@company.com
+    slack_channel: "#demo-data-contracts"
+  
+  # ─────────────────────────────────────────────────────────────────────────
+  # SCHEMA DEFINITION
+  # ─────────────────────────────────────────────────────────────────────────
+  schema:
+    database: RAW_${ENV}
+    schema: RAW_TPCH
+    table: NATION_RAW
+    
+    columns:
+      - name: N_NATIONKEY
+        type: NUMBER(38,0)
+        description: "Unique nation identifier (primary key)"
+        constraints:
+          - not_null
+          - unique
+          - primary_key
+        tags:
+          DATA_CLASSIFICATION: PUBLIC
+          PII_TYPE: NONE
+          AI_ALLOWED: "TRUE"
+          
+      - name: N_NAME
+        type: VARCHAR(25)
+        description: "Nation name"
+        constraints:
+          - not_null
+        tags:
+          DATA_CLASSIFICATION: PUBLIC
+          PII_TYPE: NONE
+          AI_ALLOWED: "TRUE"
+          
+      - name: N_REGIONKEY
+        type: NUMBER(38,0)
+        description: "Foreign key to region table"
+        constraints:
+          - not_null
+          - foreign_key
+        tags:
+          DATA_CLASSIFICATION: PUBLIC
+          PII_TYPE: NONE
+          AI_ALLOWED: "TRUE"
+          
+      - name: N_COMMENT
+        type: VARCHAR(152)
+        description: "Nation comments"
+        constraints: []
+        tags:
+          DATA_CLASSIFICATION: PUBLIC
+          PII_TYPE: NONE
+          AI_ALLOWED: "TRUE"
+          
+      # ── System Columns ──
+      - name: _LOADED_AT
+        type: TIMESTAMP_NTZ
+        description: "Snowflake ingestion timestamp"
+        constraints:
+          - not_null
+        system_managed: true
+        
+      - name: _SOURCE_FILE
+        type: VARCHAR(1024)
+        description: "Source file or batch identifier"
+        system_managed: true
+        
+      - name: _IS_CURRENT
+        type: BOOLEAN
+        description: "Flag indicating if this is the current record version"
+        system_managed: true
+
+  # ─────────────────────────────────────────────────────────────────────────
+  # SERVICE LEVEL AGREEMENTS
+  # ─────────────────────────────────────────────────────────────────────────
+  sla:
+    freshness:
+      max_age_minutes: 1440  # 24 hours - reference data
+      measurement: "MAX(_LOADED_AT) vs CURRENT_TIMESTAMP()"
+      
+    completeness:
+      threshold_percent: 100
+      critical_columns:
+        - N_NATIONKEY
+        - N_NAME
+        - N_REGIONKEY
+        
+    availability:
+      uptime_percent: 99.99
+      maintenance_window: "Sunday 02:00-04:00 UTC"
+      
+    volume:
+      expected_daily_rows:
+        min: 25
+        max: 25
+      alert_on_variance_percent: 0
+
+  # ─────────────────────────────────────────────────────────────────────────
+  # QUALITY RULES
+  # ─────────────────────────────────────────────────────────────────────────
+  quality_rules:
+    - id: qr_001
+      name: valid_nationkey
+      type: column_check
+      column: N_NATIONKEY
+      sql: "N_NATIONKEY BETWEEN 0 AND 24"
+      severity: error
+      
+    - id: qr_002
+      name: no_duplicate_nations
+      type: table_check
+      sql: "COUNT(*) = COUNT(DISTINCT N_NATIONKEY)"
+      severity: error
+      
+    - id: qr_003
+      name: valid_region_reference
+      type: cross_table_check
+      sql: |
+        SELECT COUNT(*) = 0 FROM RAW_${ENV}.RAW_TPCH.NATION_RAW n
+        WHERE _IS_CURRENT = TRUE
+        AND NOT EXISTS (
+          SELECT 1 FROM RAW_${ENV}.RAW_TPCH.REGION_RAW r 
+          WHERE r.R_REGIONKEY = n.N_REGIONKEY AND r._IS_CURRENT = TRUE
+        )
+      severity: error
+
+  # ─────────────────────────────────────────────────────────────────────────
+  # GOVERNANCE & COMPLIANCE
+  # ─────────────────────────────────────────────────────────────────────────
+  governance:
+    classification: PUBLIC
+    residency_requirements: []
+    retention_days: 9999  # Permanent reference data
+    ai_eligibility: "TRUE"
+    
+  # ─────────────────────────────────────────────────────────────────────────
+  # LINEAGE & DEPENDENCIES
+  # ─────────────────────────────────────────────────────────────────────────
+  lineage:
+    source_systems:
+      - name: Snowflake Sample Data TPCH
+        connection: SNOWFLAKE_SAMPLE_DATA.TPCH_SF1
+        extraction: DIRECT_LOAD
+        
+    upstream_dependencies:
+      - contract_id: tpch_region_v1
+        type: reference
+        
+    downstream_dependencies:
+      - contract_id: curated_geography_dim_v1
+        type: transformation
+
+  # ─────────────────────────────────────────────────────────────────────────
+  # CONSUMERS
+  # ─────────────────────────────────────────────────────────────────────────
+  consumers:
+    - team: All Teams
+      contact: data-platform@company.com
+      use_case: Reference dimension for geographic analysis
+      access_level: read_full

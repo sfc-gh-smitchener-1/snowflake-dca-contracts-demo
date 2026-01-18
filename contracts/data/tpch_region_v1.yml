@@ -1,0 +1,163 @@
+# ============================================================================
+# DATA CONTRACT: TPCH Region Data
+# ============================================================================
+# Producer: Demo Data Engineering Team
+# Source: Snowflake Sample TPCH Dataset
+# Updated: 2026-01-18
+# ============================================================================
+
+contract:
+  # ─────────────────────────────────────────────────────────────────────────
+  # IDENTITY & OWNERSHIP
+  # ─────────────────────────────────────────────────────────────────────────
+  id: tpch_region_v1
+  version: 1.0.0
+  status: active
+  
+  producer:
+    system: SNOWFLAKE_SAMPLE_TPCH
+    team: Demo Data Engineering
+    owner: demo-team@company.com
+    slack_channel: "#demo-data-contracts"
+  
+  # ─────────────────────────────────────────────────────────────────────────
+  # SCHEMA DEFINITION
+  # ─────────────────────────────────────────────────────────────────────────
+  schema:
+    database: RAW_${ENV}
+    schema: RAW_TPCH
+    table: REGION_RAW
+    
+    columns:
+      - name: R_REGIONKEY
+        type: NUMBER(38,0)
+        description: "Unique region identifier (primary key)"
+        constraints:
+          - not_null
+          - unique
+          - primary_key
+        tags:
+          DATA_CLASSIFICATION: PUBLIC
+          PII_TYPE: NONE
+          AI_ALLOWED: "TRUE"
+          
+      - name: R_NAME
+        type: VARCHAR(25)
+        description: "Region name"
+        constraints:
+          - not_null
+        tests:
+          - type: accepted_values
+            values: ["AFRICA", "AMERICA", "ASIA", "EUROPE", "MIDDLE EAST"]
+        tags:
+          DATA_CLASSIFICATION: PUBLIC
+          PII_TYPE: NONE
+          AI_ALLOWED: "TRUE"
+          
+      - name: R_COMMENT
+        type: VARCHAR(152)
+        description: "Region comments"
+        constraints: []
+        tags:
+          DATA_CLASSIFICATION: PUBLIC
+          PII_TYPE: NONE
+          AI_ALLOWED: "TRUE"
+          
+      # ── System Columns ──
+      - name: _LOADED_AT
+        type: TIMESTAMP_NTZ
+        description: "Snowflake ingestion timestamp"
+        constraints:
+          - not_null
+        system_managed: true
+        
+      - name: _SOURCE_FILE
+        type: VARCHAR(1024)
+        description: "Source file or batch identifier"
+        system_managed: true
+        
+      - name: _IS_CURRENT
+        type: BOOLEAN
+        description: "Flag indicating if this is the current record version"
+        system_managed: true
+
+  # ─────────────────────────────────────────────────────────────────────────
+  # SERVICE LEVEL AGREEMENTS
+  # ─────────────────────────────────────────────────────────────────────────
+  sla:
+    freshness:
+      max_age_minutes: 1440  # 24 hours - reference data
+      measurement: "MAX(_LOADED_AT) vs CURRENT_TIMESTAMP()"
+      
+    completeness:
+      threshold_percent: 100
+      critical_columns:
+        - R_REGIONKEY
+        - R_NAME
+        
+    availability:
+      uptime_percent: 99.99
+      maintenance_window: "Sunday 02:00-04:00 UTC"
+      
+    volume:
+      expected_daily_rows:
+        min: 5
+        max: 5
+      alert_on_variance_percent: 0
+
+  # ─────────────────────────────────────────────────────────────────────────
+  # QUALITY RULES
+  # ─────────────────────────────────────────────────────────────────────────
+  quality_rules:
+    - id: qr_001
+      name: valid_regionkey
+      type: column_check
+      column: R_REGIONKEY
+      sql: "R_REGIONKEY BETWEEN 0 AND 4"
+      severity: error
+      
+    - id: qr_002
+      name: no_duplicate_regions
+      type: table_check
+      sql: "COUNT(*) = COUNT(DISTINCT R_REGIONKEY)"
+      severity: error
+      
+    - id: qr_003
+      name: valid_region_names
+      type: column_check
+      column: R_NAME
+      sql: "R_NAME IN ('AFRICA', 'AMERICA', 'ASIA', 'EUROPE', 'MIDDLE EAST')"
+      severity: error
+
+  # ─────────────────────────────────────────────────────────────────────────
+  # GOVERNANCE & COMPLIANCE
+  # ─────────────────────────────────────────────────────────────────────────
+  governance:
+    classification: PUBLIC
+    residency_requirements: []
+    retention_days: 9999  # Permanent reference data
+    ai_eligibility: "TRUE"
+    
+  # ─────────────────────────────────────────────────────────────────────────
+  # LINEAGE & DEPENDENCIES
+  # ─────────────────────────────────────────────────────────────────────────
+  lineage:
+    source_systems:
+      - name: Snowflake Sample Data TPCH
+        connection: SNOWFLAKE_SAMPLE_DATA.TPCH_SF1
+        extraction: DIRECT_LOAD
+        
+    downstream_dependencies:
+      - contract_id: tpch_nation_v1
+        type: reference
+      - contract_id: curated_geography_dim_v1
+        type: transformation
+
+  # ─────────────────────────────────────────────────────────────────────────
+  # CONSUMERS
+  # ─────────────────────────────────────────────────────────────────────────
+  consumers:
+    - team: All Teams
+      contact: data-platform@company.com
+      use_case: Reference dimension for geographic analysis
+      access_level: read_full

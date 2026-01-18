@@ -1,0 +1,351 @@
+# ============================================================================
+# PRODUCT CONTRACT: Sales Analytics Semantic View
+# ============================================================================
+# Owner: Analytics Platform Team
+# Description: Core sales analytics for BI tools and AI workloads
+# Updated: 2026-01-18
+# ============================================================================
+
+product:
+  # ─────────────────────────────────────────────────────────────────────────
+  # IDENTITY & OWNERSHIP
+  # ─────────────────────────────────────────────────────────────────────────
+  id: sem_sales_analytics_v1
+  version: 1.0.0
+  status: active
+  
+  owner:
+    team: Analytics Platform
+    contact: analytics-platform@company.com
+    slack_channel: "#sales-analytics"
+    
+  description: |
+    Core sales analytics semantic view for TPCH demo data.
+    Provides comprehensive order and line item details with full dimensional context.
+    
+    Key features:
+    - Customer PII is pseudonymized (safe for AI/ML)
+    - Pre-joined dimensions (geography, customer, product, supplier)
+    - Pre-calculated metrics (discounts, taxes, delivery times)
+    - Optimized for BI tools and Cortex Analyst
+    
+  # ─────────────────────────────────────────────────────────────────────────
+  # OUTPUT SPECIFICATION
+  # ─────────────────────────────────────────────────────────────────────────
+  output:
+    type: secure_view
+    database: SEM_${ENV}
+    schema: SEM_SALES
+    object: VW_SALES_ANALYTICS
+    
+    columns:
+      # Date Dimensions
+      - name: ORDER_DATE
+        type: DATE
+        description: "Date when the order was placed"
+        
+      - name: YEAR
+        type: NUMBER
+        description: "Year of the order"
+        
+      - name: QUARTER
+        type: NUMBER
+        description: "Quarter of the order (1-4)"
+        
+      - name: MONTH
+        type: NUMBER
+        description: "Month number (1-12)"
+        
+      - name: MONTH_NAME
+        type: VARCHAR
+        description: "Name of the month"
+        
+      # Geography Dimensions
+      - name: REGION_NAME
+        type: VARCHAR
+        description: "Geographic region"
+        
+      - name: REGION_GROUP
+        type: VARCHAR
+        description: "Simplified region grouping (AMER, EMEA, APAC)"
+        
+      - name: NATION_NAME
+        type: VARCHAR
+        description: "Customer's nation"
+        
+      # Customer Dimensions (Pseudonymized)
+      - name: CUSTOMER_KEY
+        type: NUMBER
+        description: "Customer surrogate key"
+        
+      - name: CUSTOMER_ID
+        type: VARCHAR
+        description: "Pseudonymized customer identifier (SHA256 hash)"
+        
+      - name: MARKET_SEGMENT
+        type: VARCHAR
+        description: "Customer market segment"
+        
+      - name: CUSTOMER_TIER
+        type: VARCHAR
+        description: "Customer value tier"
+        
+      # Product Dimensions
+      - name: PART_KEY
+        type: NUMBER
+        description: "Part/product key"
+        
+      - name: PART_NAME
+        type: VARCHAR
+        description: "Product name"
+        
+      - name: MANUFACTURER
+        type: VARCHAR
+        description: "Product manufacturer"
+        
+      - name: BRAND
+        type: VARCHAR
+        description: "Product brand"
+        
+      - name: PART_TYPE
+        type: VARCHAR
+        description: "Product type classification"
+        
+      - name: SIZE_CATEGORY
+        type: VARCHAR
+        description: "Product size category"
+        
+      - name: PRICE_TIER
+        type: VARCHAR
+        description: "Product price tier"
+        
+      # Supplier Dimensions
+      - name: SUPPLIER_KEY
+        type: NUMBER
+        description: "Supplier key"
+        
+      - name: SUPPLIER_NAME
+        type: VARCHAR
+        description: "Supplier name"
+        
+      - name: SUPPLIER_TIER
+        type: VARCHAR
+        description: "Supplier tier classification"
+        
+      - name: SUPPLIER_REGION
+        type: VARCHAR
+        description: "Supplier's region"
+        
+      # Order Dimensions
+      - name: ORDER_KEY
+        type: NUMBER
+        description: "Unique order identifier"
+        
+      - name: ORDER_STATUS
+        type: VARCHAR
+        description: "Order status (OPEN, FULFILLED, PENDING)"
+        
+      - name: ORDER_PRIORITY
+        type: VARCHAR
+        description: "Order priority level"
+        
+      # Line Item Dimensions
+      - name: LINE_NUMBER
+        type: NUMBER
+        description: "Line number within order"
+        
+      - name: SHIP_MODE
+        type: VARCHAR
+        description: "Shipping mode"
+        
+      - name: RETURN_STATUS
+        type: VARCHAR
+        description: "Return status"
+        
+      - name: DELIVERY_STATUS
+        type: VARCHAR
+        description: "Delivery status (ON_TIME, LATE)"
+        
+      # Measures
+      - name: QUANTITY
+        type: NUMBER
+        description: "Quantity ordered"
+        
+      - name: GROSS_REVENUE
+        type: NUMBER
+        description: "Gross revenue before discounts"
+        
+      - name: NET_REVENUE
+        type: NUMBER
+        description: "Net revenue after discounts"
+        
+      - name: TOTAL_REVENUE_WITH_TAX
+        type: NUMBER
+        description: "Total revenue including tax"
+        
+      - name: DISCOUNT_AMOUNT
+        type: NUMBER
+        description: "Discount amount"
+        
+      - name: TAX_AMOUNT
+        type: NUMBER
+        description: "Tax amount"
+        
+      - name: DELIVERY_DAYS
+        type: NUMBER
+        description: "Days for delivery"
+        
+      - name: UNIT_PRICE
+        type: NUMBER
+        description: "Unit price (extended price / quantity)"
+        
+      - name: DISCOUNT_PERCENTAGE
+        type: NUMBER
+        description: "Discount as percentage"
+        
+      # Flags
+      - name: IS_RETURNED
+        type: NUMBER
+        description: "Return flag (1=returned, 0=not returned)"
+        
+      - name: IS_LATE_DELIVERY
+        type: NUMBER
+        description: "Late delivery flag (1=late, 0=on time)"
+        
+      # Metadata
+      - name: AS_OF_DATE
+        type: DATE
+        description: "Data freshness date"
+
+  # ─────────────────────────────────────────────────────────────────────────
+  # LINEAGE
+  # ─────────────────────────────────────────────────────────────────────────
+  lineage:
+    sources:
+      - contract_id: tpch_customer_v1
+        layer: RAW
+        
+      - contract_id: tpch_orders_v1
+        layer: RAW
+        
+      - contract_id: tpch_lineitem_v1
+        layer: RAW
+        
+      - contract_id: tpch_part_v1
+        layer: RAW
+        
+      - contract_id: tpch_supplier_v1
+        layer: RAW
+        
+      - contract_id: tpch_nation_v1
+        layer: RAW
+        
+      - contract_id: tpch_region_v1
+        layer: RAW
+        
+    transformations:
+      - dynamic_table: DIM_GEOGRAPHY
+      - dynamic_table: DIM_CUSTOMER
+      - dynamic_table: DIM_PART
+      - dynamic_table: DIM_SUPPLIER
+      - dynamic_table: FACT_ORDERS
+      - dynamic_table: FACT_LINEITEM
+      - view: VW_SALES_ANALYTICS
+
+  # ─────────────────────────────────────────────────────────────────────────
+  # GUARANTEES
+  # ─────────────────────────────────────────────────────────────────────────
+  guarantees:
+    freshness:
+      max_age_hours: 2
+      refresh_schedule: "Dynamic Table - auto-refresh"
+      
+    quality:
+      completeness_percent: 99.9
+      
+    availability:
+      uptime_sla: "99.9%"
+
+  # ─────────────────────────────────────────────────────────────────────────
+  # ACCESS CONTROL
+  # ─────────────────────────────────────────────────────────────────────────
+  access:
+    visibility: internal_marketplace
+    
+    allowed_roles:
+      - DATA_ANALYST_${REGION}
+      - BI_DEVELOPER_${REGION}
+      - DATA_SCIENTIST_${REGION}
+      - SALES_ANALYST_${REGION}
+      - FINANCE_ANALYST_${REGION}
+      
+    restricted_roles:
+      - EXTERNAL_PARTNER
+      - CONTRACTOR
+      
+    residency: region_only
+
+  # ─────────────────────────────────────────────────────────────────────────
+  # AI CONSTRAINTS
+  # ─────────────────────────────────────────────────────────────────────────
+  ai_constraints:
+    embedding_allowed: true
+    raw_pii_in_output: false
+    vector_table: null
+    model_training_allowed: true
+    cortex_analyst_enabled: true
+    notes: |
+      This view is safe for AI/ML workloads because:
+      - Customer identifiers are pseudonymized (SHA256 hash)
+      - No direct PII (names, emails, phones, addresses) exposed
+      - Only aggregatable business metrics included
+      - Semantic model available for Cortex Analyst
+
+  # ─────────────────────────────────────────────────────────────────────────
+  # DOCUMENTATION
+  # ─────────────────────────────────────────────────────────────────────────
+  documentation:
+    wiki_url: https://wiki.company.com/data-products/sales-analytics
+    
+    sample_questions:
+      - "What was total revenue last year?"
+      - "Show me revenue by region"
+      - "Which market segment has the highest sales?"
+      - "What is our return rate by product type?"
+      - "Show monthly revenue trend"
+      - "Top 10 products by revenue"
+      - "Which suppliers have the most late deliveries?"
+    
+    sample_queries:
+      - name: "Revenue by Region"
+        sql: |
+          SELECT 
+            REGION_NAME,
+            SUM(NET_REVENUE) as revenue,
+            COUNT(DISTINCT ORDER_KEY) as orders
+          FROM SEM_${ENV}.SEM_SALES.VW_SALES_ANALYTICS
+          GROUP BY REGION_NAME
+          ORDER BY revenue DESC;
+          
+      - name: "Monthly Trend"
+        sql: |
+          SELECT 
+            YEAR, MONTH, MONTH_NAME,
+            SUM(NET_REVENUE) as revenue,
+            SUM(QUANTITY) as units
+          FROM SEM_${ENV}.SEM_SALES.VW_SALES_ANALYTICS
+          GROUP BY YEAR, MONTH, MONTH_NAME
+          ORDER BY YEAR, MONTH;
+          
+      - name: "Product Performance"
+        sql: |
+          SELECT 
+            MANUFACTURER,
+            BRAND,
+            SUM(NET_REVENUE) as revenue,
+            SUM(IS_RETURNED) as returns,
+            SUM(IS_RETURNED)::FLOAT / COUNT(*) * 100 as return_rate
+          FROM SEM_${ENV}.SEM_SALES.VW_SALES_ANALYTICS
+          GROUP BY MANUFACTURER, BRAND
+          ORDER BY revenue DESC
+          LIMIT 20;

@@ -1,0 +1,243 @@
+# ============================================================================
+# DATA CONTRACT: TPCH Customer Data
+# ============================================================================
+# Producer: Demo Data Engineering Team
+# Source: Snowflake Sample TPCH Dataset
+# Updated: 2026-01-18
+# ============================================================================
+
+contract:
+  # ─────────────────────────────────────────────────────────────────────────
+  # IDENTITY & OWNERSHIP
+  # ─────────────────────────────────────────────────────────────────────────
+  id: tpch_customer_v1
+  version: 1.0.0
+  status: active
+  
+  producer:
+    system: SNOWFLAKE_SAMPLE_TPCH
+    team: Demo Data Engineering
+    owner: demo-team@company.com
+    slack_channel: "#demo-data-contracts"
+  
+  # ─────────────────────────────────────────────────────────────────────────
+  # SCHEMA DEFINITION
+  # ─────────────────────────────────────────────────────────────────────────
+  schema:
+    database: RAW_${ENV}
+    schema: RAW_TPCH
+    table: CUSTOMER_RAW
+    
+    columns:
+      - name: C_CUSTKEY
+        type: NUMBER(38,0)
+        description: "Unique customer identifier (primary key)"
+        constraints:
+          - not_null
+          - unique
+          - primary_key
+        tags:
+          DATA_CLASSIFICATION: INTERNAL
+          PII_TYPE: NONE
+          AI_ALLOWED: "TRUE"
+          
+      - name: C_NAME
+        type: VARCHAR(25)
+        description: "Customer name"
+        constraints:
+          - not_null
+        tags:
+          DATA_CLASSIFICATION: CONFIDENTIAL
+          PII_TYPE: MODERATE
+          AI_ALLOWED: PSEUDONYMIZED_ONLY
+          RESIDENCY_REGION: ORIGIN
+          
+      - name: C_ADDRESS
+        type: VARCHAR(40)
+        description: "Customer street address"
+        constraints:
+          - not_null
+        tags:
+          DATA_CLASSIFICATION: CONFIDENTIAL
+          PII_TYPE: MODERATE
+          AI_ALLOWED: "FALSE"
+          RESIDENCY_REGION: ORIGIN
+          
+      - name: C_NATIONKEY
+        type: NUMBER(38,0)
+        description: "Foreign key to nation table"
+        constraints:
+          - not_null
+        tags:
+          DATA_CLASSIFICATION: INTERNAL
+          PII_TYPE: NONE
+          AI_ALLOWED: "TRUE"
+          
+      - name: C_PHONE
+        type: VARCHAR(15)
+        description: "Customer phone number"
+        constraints:
+          - not_null
+        tags:
+          DATA_CLASSIFICATION: CONFIDENTIAL
+          PII_TYPE: MODERATE
+          AI_ALLOWED: "FALSE"
+          RESIDENCY_REGION: ORIGIN
+          
+      - name: C_ACCTBAL
+        type: NUMBER(12,2)
+        description: "Customer account balance"
+        constraints:
+          - not_null
+        tags:
+          DATA_CLASSIFICATION: CONFIDENTIAL
+          PII_TYPE: LOW
+          AI_ALLOWED: "TRUE"
+          
+      - name: C_MKTSEGMENT
+        type: VARCHAR(10)
+        description: "Market segment classification"
+        constraints:
+          - not_null
+        tests:
+          - type: accepted_values
+            values: ["AUTOMOBILE", "BUILDING", "FURNITURE", "HOUSEHOLD", "MACHINERY"]
+        tags:
+          DATA_CLASSIFICATION: INTERNAL
+          PII_TYPE: NONE
+          AI_ALLOWED: "TRUE"
+          
+      - name: C_COMMENT
+        type: VARCHAR(117)
+        description: "Free-form customer comments"
+        constraints: []
+        tags:
+          DATA_CLASSIFICATION: INTERNAL
+          PII_TYPE: NONE
+          AI_ALLOWED: "TRUE"
+          
+      # ── System Columns ──
+      - name: _LOADED_AT
+        type: TIMESTAMP_NTZ
+        description: "Snowflake ingestion timestamp"
+        constraints:
+          - not_null
+        system_managed: true
+        
+      - name: _SOURCE_FILE
+        type: VARCHAR(1024)
+        description: "Source file or batch identifier"
+        system_managed: true
+        
+      - name: _ROW_HASH
+        type: VARCHAR(64)
+        description: "SHA256 hash of business columns for change detection"
+        system_managed: true
+        
+      - name: _IS_CURRENT
+        type: BOOLEAN
+        description: "Flag indicating if this is the current record version"
+        system_managed: true
+
+  # ─────────────────────────────────────────────────────────────────────────
+  # SERVICE LEVEL AGREEMENTS
+  # ─────────────────────────────────────────────────────────────────────────
+  sla:
+    freshness:
+      max_age_minutes: 60
+      measurement: "MAX(_LOADED_AT) vs CURRENT_TIMESTAMP()"
+      
+    completeness:
+      threshold_percent: 99.5
+      critical_columns:
+        - C_CUSTKEY
+        - C_NAME
+        - C_NATIONKEY
+        
+    availability:
+      uptime_percent: 99.9
+      maintenance_window: "Sunday 02:00-04:00 UTC"
+      
+    volume:
+      expected_daily_rows:
+        min: 100000
+        max: 200000
+      alert_on_variance_percent: 25
+
+  # ─────────────────────────────────────────────────────────────────────────
+  # QUALITY RULES
+  # ─────────────────────────────────────────────────────────────────────────
+  quality_rules:
+    - id: qr_001
+      name: valid_custkey
+      type: column_check
+      column: C_CUSTKEY
+      sql: "C_CUSTKEY > 0"
+      severity: error
+      
+    - id: qr_002
+      name: no_duplicate_customers
+      type: table_check
+      sql: "COUNT(*) = COUNT(DISTINCT C_CUSTKEY) OR SUM(CASE WHEN _IS_CURRENT THEN 1 ELSE 0 END) = COUNT(DISTINCT C_CUSTKEY)"
+      severity: error
+      
+    - id: qr_003
+      name: valid_market_segment
+      type: column_check
+      column: C_MKTSEGMENT
+      sql: "C_MKTSEGMENT IN ('AUTOMOBILE', 'BUILDING', 'FURNITURE', 'HOUSEHOLD', 'MACHINERY')"
+      severity: error
+      
+    - id: qr_004
+      name: valid_nation_key
+      type: column_check
+      column: C_NATIONKEY
+      sql: "C_NATIONKEY BETWEEN 0 AND 24"
+      severity: warning
+      
+    - id: qr_005
+      name: phone_format
+      type: column_check
+      column: C_PHONE
+      sql: "C_PHONE REGEXP '^[0-9]{2}-[0-9]{3}-[0-9]{3}-[0-9]{4}$'"
+      severity: warning
+
+  # ─────────────────────────────────────────────────────────────────────────
+  # GOVERNANCE & COMPLIANCE
+  # ─────────────────────────────────────────────────────────────────────────
+  governance:
+    classification: CONFIDENTIAL
+    residency_requirements:
+      - "PII columns must not leave origin region without masking"
+      - "Customer names and addresses require pseudonymization for AI workloads"
+    retention_days: 2555  # 7 years
+    ai_eligibility: PSEUDONYMIZED_ONLY
+    
+  # ─────────────────────────────────────────────────────────────────────────
+  # LINEAGE & DEPENDENCIES
+  # ─────────────────────────────────────────────────────────────────────────
+  lineage:
+    source_systems:
+      - name: Snowflake Sample Data TPCH
+        connection: SNOWFLAKE_SAMPLE_DATA.TPCH_SF1
+        extraction: DIRECT_LOAD
+        
+    downstream_dependencies:
+      - contract_id: curated_customer_entity_v1
+        type: transformation
+      - contract_id: sem_sales_analytics_v1
+        type: product
+
+  # ─────────────────────────────────────────────────────────────────────────
+  # CONSUMERS
+  # ─────────────────────────────────────────────────────────────────────────
+  consumers:
+    - team: Analytics Platform
+      contact: analytics@company.com
+      use_case: Customer segmentation and sales analysis
+      access_level: read_masked
+      
+    - team: Data Science
+      contact: data-science@company.com  
+      use_case: Predictive modeling and customer insights
+      access_level: read_masked

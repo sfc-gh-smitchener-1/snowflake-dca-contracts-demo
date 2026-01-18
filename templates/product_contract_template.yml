@@ -1,0 +1,124 @@
+# ============================================================================
+# PRODUCT CONTRACT TEMPLATE
+# ============================================================================
+# This template defines the structure for data product contracts.
+# Product contracts describe consumer-facing semantic views and APIs.
+#
+# Naming convention: sem_<domain>_<product>_v<major_version>.yml
+# Example: sem_customer_analytics_v1.yml, sem_sales_metrics_v1.yml
+# ============================================================================
+
+product:
+  # ─────────────────────────────────────────────────────────────────────────
+  # IDENTITY & OWNERSHIP
+  # ─────────────────────────────────────────────────────────────────────────
+  id: sem_<domain>_<product>_v1                # Unique identifier
+  version: 1.0.0                               # Semantic version
+  status: draft                                # draft | review | approved | active | deprecated | retired
+  
+  owner:
+    team: <Data Product Team>
+    contact: team-email@company.com
+    slack_channel: "#team-data-products"
+    
+  description: |
+    Brief description of what this data product provides.
+    Include key use cases and value proposition.
+    
+  # ─────────────────────────────────────────────────────────────────────────
+  # OUTPUT SPECIFICATION
+  # ─────────────────────────────────────────────────────────────────────────
+  output:
+    type: secure_view                          # secure_view | table | api | share
+    database: SEM_${REGION}
+    schema: SEM_<DOMAIN>
+    object: VW_<PRODUCT_NAME>
+    
+    columns:
+      - name: <DIMENSION_1>
+        type: VARCHAR
+        description: "Description of dimension"
+        
+      - name: <DIMENSION_2>
+        type: VARCHAR
+        description: "Description of dimension"
+        
+      - name: <METRIC_1>
+        type: NUMBER
+        description: "Description of metric"
+        
+      - name: <METRIC_2>
+        type: FLOAT
+        description: "Description of metric"
+        
+      - name: AS_OF_DATE
+        type: DATE
+        description: "Data freshness date"
+
+  # ─────────────────────────────────────────────────────────────────────────
+  # LINEAGE
+  # ─────────────────────────────────────────────────────────────────────────
+  lineage:
+    sources:
+      - contract_id: <upstream_contract_id>
+        layer: CURATED                         # RAW | CURATED | SEM
+        
+    transformations:
+      - dbt_model: <intermediate_model>
+      - dbt_model: <fact_model>
+      - dbt_model: <final_view>
+
+  # ─────────────────────────────────────────────────────────────────────────
+  # GUARANTEES
+  # ─────────────────────────────────────────────────────────────────────────
+  guarantees:
+    freshness:
+      max_age_hours: 24                        # Maximum data age
+      refresh_schedule: "0 6 * * *"            # Cron schedule (6 AM daily)
+      
+    quality:
+      completeness_percent: 99.9               # Data completeness target
+      
+    availability:
+      uptime_sla: 99.95%                       # Availability SLA
+
+  # ─────────────────────────────────────────────────────────────────────────
+  # ACCESS CONTROL
+  # ─────────────────────────────────────────────────────────────────────────
+  access:
+    visibility: internal_marketplace           # internal_marketplace | private | external
+    
+    allowed_roles:
+      - DATA_ANALYST_${REGION}
+      - BI_DEVELOPER_${REGION}
+      - DATA_SCIENTIST_${REGION}
+      
+    restricted_roles:
+      - EXTERNAL_PARTNER
+      
+    residency: region_only                     # global | region_only | origin_only
+
+  # ─────────────────────────────────────────────────────────────────────────
+  # AI CONSTRAINTS
+  # ─────────────────────────────────────────────────────────────────────────
+  ai_constraints:
+    embedding_allowed: true                    # Can be used for vector embeddings
+    raw_pii_in_output: false                   # Must be false for AI use
+    vector_table: VEC_<PRODUCT_NAME>           # Associated vector table (if any)
+    model_training_allowed: true               # Can be used for ML training
+
+  # ─────────────────────────────────────────────────────────────────────────
+  # DOCUMENTATION
+  # ─────────────────────────────────────────────────────────────────────────
+  documentation:
+    wiki_url: https://wiki.company.com/data-products/<product>
+    sample_queries:
+      - name: "Basic Usage"
+        sql: |
+          SELECT 
+            <DIMENSION_1>,
+            SUM(<METRIC_1>) as total
+          FROM SEM_${REGION}.SEM_<DOMAIN>.VW_<PRODUCT_NAME>
+          GROUP BY <DIMENSION_1>
+          ORDER BY total DESC
+          LIMIT 10;

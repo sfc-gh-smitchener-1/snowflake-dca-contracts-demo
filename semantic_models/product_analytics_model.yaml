@@ -1,0 +1,331 @@
+# ============================================================================
+# CORTEX ANALYST SEMANTIC MODEL: Product Analytics
+# ============================================================================
+# This semantic model enables natural language queries on product performance,
+# inventory levels, and supply chain analytics through Cortex Analyst.
+# No PII present - fully safe for AI workloads.
+# ============================================================================
+
+name: product_analytics
+description: |
+  Product analytics semantic model for supply chain AI and inventory intelligence.
+  Includes sales performance, inventory levels, margin analysis, and supplier metrics.
+  No PII present - safe for all AI/ML workloads.
+
+version: 1.0.0
+owner: demo-team@company.com
+
+# ─────────────────────────────────────────────────────────────────────────────
+# DATABASE CONFIGURATION
+# ─────────────────────────────────────────────────────────────────────────────
+database: SEM_DEV
+schema: SEM_PRODUCT
+
+# ─────────────────────────────────────────────────────────────────────────────
+# TABLES
+# ─────────────────────────────────────────────────────────────────────────────
+tables:
+  - name: VW_PRODUCT_ANALYTICS
+    description: Product performance and inventory analytics view
+    base_table: SEM_DEV.SEM_PRODUCT.VW_PRODUCT_ANALYTICS
+    
+    # Dimensions
+    dimensions:
+      - name: product_name
+        synonyms:
+          - part name
+          - product
+          - item name
+        description: Name of the product/part
+        expr: PART_NAME
+        data_type: VARCHAR
+        
+      - name: manufacturer
+        synonyms:
+          - mfg
+          - maker
+          - vendor
+        description: Product manufacturer
+        expr: MANUFACTURER
+        data_type: VARCHAR
+        
+      - name: brand
+        synonyms:
+          - product brand
+        description: Product brand
+        expr: BRAND
+        data_type: VARCHAR
+        
+      - name: product_type
+        synonyms:
+          - part type
+          - item type
+          - category
+        description: Product type/category
+        expr: PART_TYPE
+        data_type: VARCHAR
+        
+      - name: finish_type
+        synonyms:
+          - finish
+          - surface
+        description: Product finish type
+        expr: FINISH_TYPE
+        data_type: VARCHAR
+        
+      - name: material_type
+        synonyms:
+          - material
+        description: Product material type
+        expr: MATERIAL_TYPE
+        data_type: VARCHAR
+        
+      - name: size_category
+        synonyms:
+          - size
+          - product size
+        description: Product size category (SMALL, MEDIUM, LARGE, EXTRA_LARGE)
+        expr: SIZE_CATEGORY
+        data_type: VARCHAR
+        
+      - name: container_type
+        synonyms:
+          - container
+          - packaging
+        description: Container/packaging type
+        expr: CONTAINER_TYPE
+        data_type: VARCHAR
+        
+      - name: price_tier
+        synonyms:
+          - pricing tier
+          - price level
+        description: Product price tier (ECONOMY, STANDARD, PREMIUM)
+        expr: PRICE_TIER
+        data_type: VARCHAR
+        
+      - name: inventory_status
+        synonyms:
+          - stock status
+          - availability
+        description: Current inventory status (OUT_OF_STOCK, LOW_STOCK, NORMAL, HIGH_STOCK)
+        expr: INVENTORY_STATUS
+        data_type: VARCHAR
+        
+      - name: performance_tier
+        synonyms:
+          - performance
+          - sales tier
+        description: Product performance tier based on revenue (TOP_PERFORMER, STRONG_PERFORMER, AVERAGE_PERFORMER, UNDERPERFORMER, NO_SALES)
+        expr: PERFORMANCE_TIER
+        data_type: VARCHAR
+
+    # Measures
+    measures:
+      - name: product_count
+        synonyms:
+          - products
+          - number of products
+          - total products
+          - skus
+        description: Count of unique products
+        expr: COUNT(DISTINCT PART_KEY)
+        data_type: NUMBER
+        default_aggregation: count_distinct
+        
+      - name: order_count
+        synonyms:
+          - orders
+          - number of orders
+        description: Total orders containing products
+        expr: SUM(ORDER_COUNT)
+        data_type: NUMBER
+        default_aggregation: sum
+        
+      - name: total_quantity_sold
+        synonyms:
+          - units sold
+          - quantity
+          - volume
+        description: Total quantity of products sold
+        expr: SUM(TOTAL_QUANTITY_SOLD)
+        data_type: NUMBER
+        default_aggregation: sum
+        
+      - name: gross_revenue
+        synonyms:
+          - revenue
+          - sales
+          - total revenue
+        description: Total gross revenue from products
+        expr: SUM(GROSS_REVENUE)
+        data_type: NUMBER
+        default_aggregation: sum
+        
+      - name: net_revenue
+        synonyms:
+          - net sales
+          - revenue after discount
+        description: Net revenue after discounts
+        expr: SUM(NET_REVENUE)
+        data_type: NUMBER
+        default_aggregation: sum
+        
+      - name: average_discount
+        synonyms:
+          - discount
+          - avg discount
+        description: Average discount percentage
+        expr: AVG(AVG_DISCOUNT_PCT)
+        data_type: NUMBER
+        default_aggregation: avg
+        
+      - name: return_count
+        synonyms:
+          - returns
+          - returned items
+        description: Number of returned items
+        expr: SUM(RETURN_COUNT)
+        data_type: NUMBER
+        default_aggregation: sum
+        
+      - name: average_return_rate
+        synonyms:
+          - return rate
+          - return percentage
+        description: Average return rate percentage
+        expr: AVG(RETURN_RATE_PCT)
+        data_type: NUMBER
+        default_aggregation: avg
+        
+      - name: active_suppliers
+        synonyms:
+          - suppliers
+          - supplier count
+        description: Number of active suppliers for products
+        expr: SUM(ACTIVE_SUPPLIERS)
+        data_type: NUMBER
+        default_aggregation: sum
+        
+      - name: total_inventory
+        synonyms:
+          - inventory
+          - stock
+          - on hand
+        description: Total inventory on hand
+        expr: SUM(INVENTORY_ON_HAND)
+        data_type: NUMBER
+        default_aggregation: sum
+        
+      - name: total_inventory_value
+        synonyms:
+          - inventory value
+          - stock value
+        description: Total inventory value at cost
+        expr: SUM(INVENTORY_VALUE)
+        data_type: NUMBER
+        default_aggregation: sum
+        
+      - name: average_supply_cost
+        synonyms:
+          - cost
+          - supply cost
+          - unit cost
+        description: Average supply/purchase cost
+        expr: AVG(AVG_SUPPLY_COST)
+        data_type: NUMBER
+        default_aggregation: avg
+        
+      - name: average_gross_margin
+        synonyms:
+          - margin
+          - gross margin
+          - profit margin
+        description: Average gross margin per unit
+        expr: AVG(GROSS_MARGIN)
+        data_type: NUMBER
+        default_aggregation: avg
+        
+      - name: average_gross_margin_pct
+        synonyms:
+          - margin percentage
+          - margin %
+        description: Average gross margin percentage
+        expr: AVG(GROSS_MARGIN_PCT)
+        data_type: NUMBER
+        default_aggregation: avg
+
+# ─────────────────────────────────────────────────────────────────────────────
+# SAMPLE QUESTIONS FOR TRAINING
+# ─────────────────────────────────────────────────────────────────────────────
+sample_questions:
+  - question: "Which products are out of stock?"
+    sql: |
+      SELECT PART_NAME, MANUFACTURER, BRAND, TOTAL_QUANTITY_SOLD, GROSS_REVENUE
+      FROM SEM_DEV.SEM_PRODUCT.VW_PRODUCT_ANALYTICS
+      WHERE INVENTORY_STATUS = 'OUT_OF_STOCK'
+      ORDER BY GROSS_REVENUE DESC
+      
+  - question: "Show me top performing products"
+    sql: |
+      SELECT PART_NAME, MANUFACTURER, BRAND, GROSS_REVENUE, NET_REVENUE, GROSS_MARGIN_PCT
+      FROM SEM_DEV.SEM_PRODUCT.VW_PRODUCT_ANALYTICS
+      WHERE PERFORMANCE_TIER = 'TOP_PERFORMER'
+      ORDER BY GROSS_REVENUE DESC
+      
+  - question: "What is the revenue by manufacturer?"
+    sql: |
+      SELECT MANUFACTURER, 
+             COUNT(DISTINCT PART_KEY) as products,
+             SUM(GROSS_REVENUE) as total_revenue,
+             AVG(GROSS_MARGIN_PCT) as avg_margin
+      FROM SEM_DEV.SEM_PRODUCT.VW_PRODUCT_ANALYTICS
+      GROUP BY MANUFACTURER
+      ORDER BY total_revenue DESC
+      
+  - question: "Which products have low stock but high sales?"
+    sql: |
+      SELECT PART_NAME, MANUFACTURER, INVENTORY_STATUS, INVENTORY_ON_HAND, TOTAL_QUANTITY_SOLD, GROSS_REVENUE
+      FROM SEM_DEV.SEM_PRODUCT.VW_PRODUCT_ANALYTICS
+      WHERE INVENTORY_STATUS = 'LOW_STOCK' 
+        AND PERFORMANCE_TIER IN ('TOP_PERFORMER', 'STRONG_PERFORMER')
+      ORDER BY GROSS_REVENUE DESC
+      
+  - question: "What is our total inventory value?"
+    sql: |
+      SELECT SUM(INVENTORY_VALUE) as total_inventory_value
+      FROM SEM_DEV.SEM_PRODUCT.VW_PRODUCT_ANALYTICS
+      
+  - question: "Show me product margin by price tier"
+    sql: |
+      SELECT PRICE_TIER,
+             COUNT(DISTINCT PART_KEY) as products,
+             SUM(GROSS_REVENUE) as revenue,
+             AVG(GROSS_MARGIN_PCT) as avg_margin_pct
+      FROM SEM_DEV.SEM_PRODUCT.VW_PRODUCT_ANALYTICS
+      GROUP BY PRICE_TIER
+      ORDER BY avg_margin_pct DESC
+
+# ─────────────────────────────────────────────────────────────────────────────
+# FILTERS (Common WHERE clauses)
+# ─────────────────────────────────────────────────────────────────────────────
+filters:
+  - name: in_stock
+    description: Products that are in stock
+    expr: INVENTORY_STATUS != 'OUT_OF_STOCK'
+    
+  - name: low_stock
+    description: Products with low stock
+    expr: INVENTORY_STATUS = 'LOW_STOCK'
+    
+  - name: top_performers
+    description: Top performing products by revenue
+    expr: PERFORMANCE_TIER = 'TOP_PERFORMER'
+    
+  - name: premium_products
+    description: Premium priced products
+    expr: PRICE_TIER = 'PREMIUM'
+    
+  - name: high_margin
+    description: Products with high margin (> 30%)
+    expr: GROSS_MARGIN_PCT > 30

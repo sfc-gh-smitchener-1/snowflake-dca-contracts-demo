@@ -1,0 +1,413 @@
+# ============================================================================
+# CORTEX ANALYST SEMANTIC MODEL: Sales Analytics
+# ============================================================================
+# This semantic model enables natural language queries on sales data
+# through Snowflake Cortex Analyst and Snowflake Intelligence
+# ============================================================================
+
+name: sales_analytics
+description: |
+  Sales analytics semantic model for TPCH demo data.
+  Enables natural language queries on orders, products, customers, and suppliers.
+  All customer PII is pseudonymized for AI safety.
+
+version: 1.0.0
+owner: demo-team@company.com
+
+# ─────────────────────────────────────────────────────────────────────────────
+# DATABASE CONFIGURATION
+# ─────────────────────────────────────────────────────────────────────────────
+database: SEM_DEV
+schema: SEM_SALES
+
+# ─────────────────────────────────────────────────────────────────────────────
+# TABLES
+# ─────────────────────────────────────────────────────────────────────────────
+tables:
+  - name: VW_SALES_ANALYTICS
+    description: Core sales analytics view with order line item details
+    base_table: SEM_DEV.SEM_SALES.VW_SALES_ANALYTICS
+    
+    # Dimensions
+    dimensions:
+      # Time Dimensions
+      - name: order_date
+        synonyms:
+          - date
+          - order date
+          - sale date
+          - transaction date
+        description: The date when the order was placed
+        expr: ORDER_DATE
+        data_type: DATE
+        
+      - name: year
+        synonyms:
+          - order year
+          - sales year
+        description: Year of the order
+        expr: YEAR
+        data_type: NUMBER
+        
+      - name: quarter
+        synonyms:
+          - order quarter
+          - sales quarter
+        description: Quarter of the order (1-4)
+        expr: QUARTER
+        data_type: NUMBER
+        
+      - name: month
+        synonyms:
+          - order month
+          - sales month
+        description: Month number (1-12)
+        expr: MONTH
+        data_type: NUMBER
+        
+      - name: month_name
+        synonyms:
+          - month
+        description: Name of the month
+        expr: MONTH_NAME
+        data_type: VARCHAR
+        
+      # Geography Dimensions
+      - name: region
+        synonyms:
+          - customer region
+          - geographic region
+          - area
+        description: Geographic region (AFRICA, AMERICA, ASIA, EUROPE, MIDDLE EAST)
+        expr: REGION_NAME
+        data_type: VARCHAR
+        
+      - name: region_group
+        synonyms:
+          - region group
+          - territory
+        description: Simplified region grouping (AMER, EMEA, APAC)
+        expr: REGION_GROUP
+        data_type: VARCHAR
+        
+      - name: nation
+        synonyms:
+          - country
+          - customer country
+        description: Customer's nation/country
+        expr: NATION_NAME
+        data_type: VARCHAR
+        
+      # Customer Dimensions
+      - name: market_segment
+        synonyms:
+          - segment
+          - customer segment
+          - industry
+        description: Customer market segment (AUTOMOBILE, BUILDING, FURNITURE, HOUSEHOLD, MACHINERY)
+        expr: MARKET_SEGMENT
+        data_type: VARCHAR
+        
+      - name: customer_tier
+        synonyms:
+          - customer level
+          - account tier
+        description: Customer value tier (PREMIUM, STANDARD, BASIC, CREDIT_RISK)
+        expr: CUSTOMER_TIER
+        data_type: VARCHAR
+        
+      # Product Dimensions  
+      - name: manufacturer
+        synonyms:
+          - mfg
+          - maker
+          - vendor
+        description: Product manufacturer
+        expr: MANUFACTURER
+        data_type: VARCHAR
+        
+      - name: brand
+        synonyms:
+          - product brand
+        description: Product brand
+        expr: BRAND
+        data_type: VARCHAR
+        
+      - name: product_type
+        synonyms:
+          - part type
+          - item type
+        description: Product type classification
+        expr: PART_TYPE
+        data_type: VARCHAR
+        
+      - name: size_category
+        synonyms:
+          - product size
+          - item size
+        description: Product size category (SMALL, MEDIUM, LARGE, EXTRA_LARGE)
+        expr: SIZE_CATEGORY
+        data_type: VARCHAR
+        
+      - name: price_tier
+        synonyms:
+          - price level
+          - pricing tier
+        description: Product price tier (ECONOMY, STANDARD, PREMIUM)
+        expr: PRICE_TIER
+        data_type: VARCHAR
+        
+      # Order Dimensions
+      - name: order_status
+        synonyms:
+          - status
+          - order state
+        description: Order status (OPEN, FULFILLED, PENDING)
+        expr: ORDER_STATUS
+        data_type: VARCHAR
+        
+      - name: order_priority
+        synonyms:
+          - priority
+          - urgency
+        description: Order priority level
+        expr: ORDER_PRIORITY
+        data_type: VARCHAR
+        
+      - name: ship_mode
+        synonyms:
+          - shipping method
+          - delivery method
+          - carrier
+        description: Shipping mode (AIR, RAIL, SHIP, TRUCK, etc.)
+        expr: SHIP_MODE
+        data_type: VARCHAR
+        
+      - name: return_status
+        synonyms:
+          - return flag
+          - returned
+        description: Whether item was returned
+        expr: RETURN_STATUS
+        data_type: VARCHAR
+        
+      - name: delivery_status
+        synonyms:
+          - on time
+          - late delivery
+        description: Whether delivery was on time or late
+        expr: DELIVERY_STATUS
+        data_type: VARCHAR
+        
+      # Supplier Dimensions
+      - name: supplier_name
+        synonyms:
+          - supplier
+          - vendor name
+        description: Name of the supplier
+        expr: SUPPLIER_NAME
+        data_type: VARCHAR
+        
+      - name: supplier_tier
+        synonyms:
+          - supplier level
+          - vendor tier
+        description: Supplier tier classification
+        expr: SUPPLIER_TIER
+        data_type: VARCHAR
+        
+      - name: supplier_region
+        synonyms:
+          - supplier location
+          - vendor region
+        description: Region where supplier is located
+        expr: SUPPLIER_REGION
+        data_type: VARCHAR
+
+    # Measures
+    measures:
+      - name: total_revenue
+        synonyms:
+          - revenue
+          - sales
+          - total sales
+          - gross revenue
+        description: Total gross revenue before discounts
+        expr: SUM(GROSS_REVENUE)
+        data_type: NUMBER
+        default_aggregation: sum
+        
+      - name: net_revenue
+        synonyms:
+          - net sales
+          - revenue after discount
+        description: Revenue after discounts applied
+        expr: SUM(NET_REVENUE)
+        data_type: NUMBER
+        default_aggregation: sum
+        
+      - name: total_quantity
+        synonyms:
+          - quantity
+          - units
+          - items sold
+          - volume
+        description: Total quantity of items sold
+        expr: SUM(QUANTITY)
+        data_type: NUMBER
+        default_aggregation: sum
+        
+      - name: order_count
+        synonyms:
+          - orders
+          - number of orders
+          - total orders
+        description: Count of unique orders
+        expr: COUNT(DISTINCT ORDER_KEY)
+        data_type: NUMBER
+        default_aggregation: count_distinct
+        
+      - name: average_order_value
+        synonyms:
+          - aov
+          - avg order
+          - average sale
+        description: Average order value
+        expr: SUM(NET_REVENUE) / NULLIF(COUNT(DISTINCT ORDER_KEY), 0)
+        data_type: NUMBER
+        default_aggregation: avg
+        
+      - name: total_discount
+        synonyms:
+          - discounts
+          - discount amount
+        description: Total discount amount given
+        expr: SUM(DISCOUNT_AMOUNT)
+        data_type: NUMBER
+        default_aggregation: sum
+        
+      - name: discount_rate
+        synonyms:
+          - discount percentage
+          - avg discount
+        description: Average discount percentage
+        expr: AVG(DISCOUNT_PERCENTAGE)
+        data_type: NUMBER
+        default_aggregation: avg
+        
+      - name: return_count
+        synonyms:
+          - returns
+          - returned items
+        description: Number of returned items
+        expr: SUM(IS_RETURNED)
+        data_type: NUMBER
+        default_aggregation: sum
+        
+      - name: return_rate
+        synonyms:
+          - return percentage
+        description: Percentage of items returned
+        expr: SUM(IS_RETURNED) * 100.0 / NULLIF(COUNT(*), 0)
+        data_type: NUMBER
+        default_aggregation: avg
+        
+      - name: late_delivery_count
+        synonyms:
+          - late deliveries
+          - delayed orders
+        description: Number of late deliveries
+        expr: SUM(IS_LATE_DELIVERY)
+        data_type: NUMBER
+        default_aggregation: sum
+        
+      - name: on_time_rate
+        synonyms:
+          - on time delivery rate
+          - delivery performance
+        description: Percentage of on-time deliveries
+        expr: (1 - SUM(IS_LATE_DELIVERY) * 1.0 / NULLIF(COUNT(*), 0)) * 100
+        data_type: NUMBER
+        default_aggregation: avg
+        
+      - name: average_delivery_days
+        synonyms:
+          - delivery time
+          - shipping time
+        description: Average days for delivery
+        expr: AVG(DELIVERY_DAYS)
+        data_type: NUMBER
+        default_aggregation: avg
+
+# ─────────────────────────────────────────────────────────────────────────────
+# SAMPLE QUESTIONS FOR TRAINING
+# ─────────────────────────────────────────────────────────────────────────────
+sample_questions:
+  - question: "What was total revenue last year?"
+    sql: |
+      SELECT SUM(GROSS_REVENUE) as total_revenue
+      FROM SEM_DEV.SEM_SALES.VW_SALES_ANALYTICS
+      WHERE YEAR = YEAR(CURRENT_DATE()) - 1
+      
+  - question: "Show me revenue by region"
+    sql: |
+      SELECT REGION_NAME, SUM(NET_REVENUE) as revenue
+      FROM SEM_DEV.SEM_SALES.VW_SALES_ANALYTICS
+      GROUP BY REGION_NAME
+      ORDER BY revenue DESC
+      
+  - question: "Which market segment has the highest sales?"
+    sql: |
+      SELECT MARKET_SEGMENT, SUM(GROSS_REVENUE) as total_sales
+      FROM SEM_DEV.SEM_SALES.VW_SALES_ANALYTICS
+      GROUP BY MARKET_SEGMENT
+      ORDER BY total_sales DESC
+      LIMIT 1
+      
+  - question: "What is our return rate by product type?"
+    sql: |
+      SELECT PART_TYPE, 
+             COUNT(*) as total_items,
+             SUM(IS_RETURNED) as returns,
+             SUM(IS_RETURNED) * 100.0 / COUNT(*) as return_rate
+      FROM SEM_DEV.SEM_SALES.VW_SALES_ANALYTICS
+      GROUP BY PART_TYPE
+      ORDER BY return_rate DESC
+      
+  - question: "Show monthly revenue trend"
+    sql: |
+      SELECT YEAR, MONTH, MONTH_NAME, SUM(NET_REVENUE) as revenue
+      FROM SEM_DEV.SEM_SALES.VW_SALES_ANALYTICS
+      GROUP BY YEAR, MONTH, MONTH_NAME
+      ORDER BY YEAR, MONTH
+
+# ─────────────────────────────────────────────────────────────────────────────
+# FILTERS (Common WHERE clauses)
+# ─────────────────────────────────────────────────────────────────────────────
+filters:
+  - name: current_year
+    description: Filter to current year
+    expr: YEAR = YEAR(CURRENT_DATE())
+    
+  - name: last_year
+    description: Filter to previous year
+    expr: YEAR = YEAR(CURRENT_DATE()) - 1
+    
+  - name: fulfilled_orders
+    description: Only fulfilled orders
+    expr: ORDER_STATUS = 'FULFILLED'
+    
+  - name: premium_customers
+    description: Only premium tier customers
+    expr: CUSTOMER_TIER = 'PREMIUM'
+
+# ─────────────────────────────────────────────────────────────────────────────
+# RELATIONSHIPS
+# ─────────────────────────────────────────────────────────────────────────────
+relationships:
+  - name: customer_orders
+    description: Customers to their orders
+    left_table: VW_CUSTOMER_ANALYTICS
+    right_table: VW_SALES_ANALYTICS
+    join_type: inner
+    join_condition: VW_CUSTOMER_ANALYTICS.CUSTOMER_ID = VW_SALES_ANALYTICS.CUSTOMER_ID

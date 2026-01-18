@@ -1,0 +1,451 @@
+# ============================================================================
+# CORTEX ANALYST SEMANTIC MODEL: Governance & Trust Analytics
+# ============================================================================
+# This semantic model enables natural language queries on contract health,
+# data governance, SLA compliance, and trust metrics through Cortex Analyst.
+# Provides observability into the data contracts system itself.
+# ============================================================================
+
+name: governance_analytics
+description: |
+  Governance and trust analytics semantic model for Snowflake Intelligence.
+  Enables natural language queries on contract health, SLA compliance,
+  quality scores, tag coverage, and data lineage. Essential for understanding
+  the trustworthiness of your data products.
+
+version: 1.0.0
+owner: demo-team@company.com
+
+# ─────────────────────────────────────────────────────────────────────────────
+# DATABASE CONFIGURATION
+# ─────────────────────────────────────────────────────────────────────────────
+database: GOVERNANCE
+schema: OBSERVABILITY
+
+# ─────────────────────────────────────────────────────────────────────────────
+# TABLES
+# ─────────────────────────────────────────────────────────────────────────────
+tables:
+  # ─────────────────────────────────────────────────────────────────────────
+  # Contract Health Dashboard
+  # ─────────────────────────────────────────────────────────────────────────
+  - name: VW_CONTRACT_HEALTH_DASHBOARD
+    description: Contract health status with quality scores, SLA compliance, and consumer counts
+    base_table: GOVERNANCE.OBSERVABILITY.VW_CONTRACT_HEALTH_DASHBOARD
+    
+    dimensions:
+      - name: contract_id
+        synonyms:
+          - contract
+          - data contract
+          - contract name
+        description: Unique identifier for the data contract
+        expr: CONTRACT_ID
+        data_type: VARCHAR
+        
+      - name: overall_health
+        synonyms:
+          - health status
+          - status
+          - health
+        description: Overall health status (HEALTHY, WARNING, CRITICAL, UNKNOWN)
+        expr: OVERALL_HEALTH
+        data_type: VARCHAR
+        
+      - name: freshness_status
+        synonyms:
+          - freshness
+          - data freshness
+          - stale
+        description: Freshness SLA status (ON_TIME, LATE, UNKNOWN)
+        expr: FRESHNESS_STATUS
+        data_type: VARCHAR
+        
+      - name: producer_team
+        synonyms:
+          - team
+          - owner team
+          - data owner
+        description: Team that produces/owns the data
+        expr: PRODUCER_TEAM
+        data_type: VARCHAR
+        
+      - name: contract_status
+        synonyms:
+          - lifecycle status
+        description: Contract lifecycle status (active, deprecated, draft)
+        expr: CONTRACT_STATUS
+        data_type: VARCHAR
+
+    measures:
+      - name: contract_count
+        synonyms:
+          - contracts
+          - number of contracts
+          - total contracts
+        description: Count of contracts
+        expr: COUNT(DISTINCT CONTRACT_ID)
+        data_type: NUMBER
+        default_aggregation: count_distinct
+        
+      - name: average_quality_score
+        synonyms:
+          - quality score
+          - avg quality
+          - quality
+        description: Average quality score (0-100)
+        expr: AVG(QUALITY_SCORE)
+        data_type: NUMBER
+        default_aggregation: avg
+        
+      - name: average_overall_score
+        synonyms:
+          - overall score
+          - health score
+        description: Average overall health score (0-100)
+        expr: AVG(OVERALL_SCORE)
+        data_type: NUMBER
+        default_aggregation: avg
+        
+      - name: total_consumers
+        synonyms:
+          - consumers
+          - consumer count
+          - dependencies
+        description: Total number of consumers across contracts
+        expr: SUM(CONSUMER_COUNT)
+        data_type: NUMBER
+        default_aggregation: sum
+        
+      - name: total_quality_rules
+        synonyms:
+          - quality rules
+          - rules
+        description: Total number of quality rules
+        expr: SUM(QUALITY_RULE_COUNT)
+        data_type: NUMBER
+        default_aggregation: sum
+
+  # ─────────────────────────────────────────────────────────────────────────
+  # Active Alerts
+  # ─────────────────────────────────────────────────────────────────────────
+  - name: VW_ACTIVE_ALERTS
+    description: Currently active alerts and violations
+    base_table: GOVERNANCE.OBSERVABILITY.VW_ACTIVE_ALERTS
+    
+    dimensions:
+      - name: contract_id
+        synonyms:
+          - contract
+        description: Contract with the alert
+        expr: CONTRACT_ID
+        data_type: VARCHAR
+        
+      - name: alert_type
+        synonyms:
+          - type
+          - alert category
+        description: Type of alert (FRESHNESS, QUALITY, COMPLETENESS, etc.)
+        expr: ALERT_TYPE
+        data_type: VARCHAR
+        
+      - name: alert_severity
+        synonyms:
+          - severity
+          - priority
+          - level
+        description: Alert severity (CRITICAL, ERROR, WARNING, INFO)
+        expr: ALERT_SEVERITY
+        data_type: VARCHAR
+        
+      - name: alert_message
+        synonyms:
+          - message
+          - description
+        description: Detailed alert message
+        expr: ALERT_MESSAGE
+        data_type: VARCHAR
+
+    measures:
+      - name: alert_count
+        synonyms:
+          - alerts
+          - number of alerts
+          - issues
+        description: Count of active alerts
+        expr: COUNT(*)
+        data_type: NUMBER
+        default_aggregation: count
+        
+      - name: critical_alerts
+        synonyms:
+          - critical issues
+          - critical count
+        description: Count of critical severity alerts
+        expr: SUM(CASE WHEN ALERT_SEVERITY = 'CRITICAL' THEN 1 ELSE 0 END)
+        data_type: NUMBER
+        default_aggregation: sum
+        
+      - name: error_alerts
+        synonyms:
+          - errors
+          - error count
+        description: Count of error severity alerts
+        expr: SUM(CASE WHEN ALERT_SEVERITY = 'ERROR' THEN 1 ELSE 0 END)
+        data_type: NUMBER
+        default_aggregation: sum
+        
+      - name: warning_alerts
+        synonyms:
+          - warnings
+          - warning count
+        description: Count of warning severity alerts
+        expr: SUM(CASE WHEN ALERT_SEVERITY = 'WARNING' THEN 1 ELSE 0 END)
+        data_type: NUMBER
+        default_aggregation: sum
+
+  # ─────────────────────────────────────────────────────────────────────────
+  # Tag Coverage
+  # ─────────────────────────────────────────────────────────────────────────
+  - name: VW_TAG_COVERAGE
+    description: Governance tag coverage by contract
+    base_table: GOVERNANCE.OBSERVABILITY.VW_TAG_COVERAGE
+    
+    dimensions:
+      - name: contract_id
+        synonyms:
+          - contract
+        description: Contract identifier
+        expr: CONTRACT_ID
+        data_type: VARCHAR
+
+    measures:
+      - name: total_columns
+        synonyms:
+          - columns
+          - column count
+        description: Total columns in contract
+        expr: SUM(TOTAL_COLUMNS)
+        data_type: NUMBER
+        default_aggregation: sum
+        
+      - name: tagged_columns
+        synonyms:
+          - tagged
+          - columns with tags
+        description: Columns with governance tags
+        expr: SUM(TAGGED_COLUMNS)
+        data_type: NUMBER
+        default_aggregation: sum
+        
+      - name: average_tag_coverage
+        synonyms:
+          - tag coverage
+          - coverage percentage
+          - governance coverage
+        description: Average tag coverage percentage
+        expr: AVG(TAG_COVERAGE_PCT)
+        data_type: NUMBER
+        default_aggregation: avg
+
+  # ─────────────────────────────────────────────────────────────────────────
+  # SLA Compliance Trend
+  # ─────────────────────────────────────────────────────────────────────────
+  - name: VW_SLA_COMPLIANCE_TREND
+    description: SLA compliance metrics over time
+    base_table: GOVERNANCE.OBSERVABILITY.VW_SLA_COMPLIANCE_TREND
+    
+    dimensions:
+      - name: metric_date
+        synonyms:
+          - date
+          - day
+        description: Date of the metric
+        expr: METRIC_DATE
+        data_type: DATE
+        
+      - name: contract_id
+        synonyms:
+          - contract
+        description: Contract identifier
+        expr: CONTRACT_ID
+        data_type: VARCHAR
+
+    measures:
+      - name: compliance_percentage
+        synonyms:
+          - compliance rate
+          - sla compliance
+          - compliance
+        description: SLA compliance percentage
+        expr: AVG(COMPLIANCE_PCT)
+        data_type: NUMBER
+        default_aggregation: avg
+
+  # ─────────────────────────────────────────────────────────────────────────
+  # Dashboard KPIs
+  # ─────────────────────────────────────────────────────────────────────────
+  - name: VW_DASHBOARD_KPIS
+    description: High-level governance KPIs
+    base_table: GOVERNANCE.OBSERVABILITY.VW_DASHBOARD_KPIS
+    
+    dimensions:
+      - name: kpi_name
+        synonyms:
+          - metric
+          - kpi
+        description: Name of the KPI
+        expr: KPI_NAME
+        data_type: VARCHAR
+        
+      - name: kpi_category
+        synonyms:
+          - category
+        description: Category of the KPI
+        expr: KPI_CATEGORY
+        data_type: VARCHAR
+
+    measures:
+      - name: kpi_value
+        synonyms:
+          - value
+          - metric value
+        description: Value of the KPI
+        expr: SUM(KPI_VALUE)
+        data_type: NUMBER
+        default_aggregation: sum
+
+# ─────────────────────────────────────────────────────────────────────────────
+# SAMPLE QUESTIONS FOR TRAINING
+# ─────────────────────────────────────────────────────────────────────────────
+sample_questions:
+  # Contract Health
+  - question: "What is the overall health of our data contracts?"
+    sql: |
+      SELECT OVERALL_HEALTH, COUNT(*) as contract_count, AVG(QUALITY_SCORE) as avg_quality
+      FROM GOVERNANCE.OBSERVABILITY.VW_CONTRACT_HEALTH_DASHBOARD
+      GROUP BY OVERALL_HEALTH
+      ORDER BY contract_count DESC
+      
+  - question: "Which contracts have critical health issues?"
+    sql: |
+      SELECT CONTRACT_ID, QUALITY_SCORE, FRESHNESS_STATUS, CONSUMER_COUNT
+      FROM GOVERNANCE.OBSERVABILITY.VW_CONTRACT_HEALTH_DASHBOARD
+      WHERE OVERALL_HEALTH = 'CRITICAL'
+      ORDER BY CONSUMER_COUNT DESC
+      
+  - question: "How many contracts are currently active?"
+    sql: |
+      SELECT COUNT(*) as active_contracts
+      FROM GOVERNANCE.OBSERVABILITY.VW_CONTRACT_HEALTH_DASHBOARD
+      WHERE CONTRACT_STATUS = 'active'
+      
+  - question: "What is our average quality score across all contracts?"
+    sql: |
+      SELECT AVG(QUALITY_SCORE) as avg_quality_score
+      FROM GOVERNANCE.OBSERVABILITY.VW_CONTRACT_HEALTH_DASHBOARD
+      
+  # SLA Compliance
+  - question: "Which contracts are violating SLA thresholds?"
+    sql: |
+      SELECT CONTRACT_ID, FRESHNESS_STATUS, QUALITY_SCORE, OVERALL_HEALTH
+      FROM GOVERNANCE.OBSERVABILITY.VW_CONTRACT_HEALTH_DASHBOARD
+      WHERE FRESHNESS_STATUS = 'LATE' OR OVERALL_HEALTH = 'CRITICAL'
+      
+  - question: "What is our overall SLA compliance rate?"
+    sql: |
+      SELECT AVG(COMPLIANCE_PCT) as overall_compliance
+      FROM GOVERNANCE.OBSERVABILITY.VW_SLA_COMPLIANCE_TREND
+      WHERE METRIC_DATE >= DATEADD(day, -7, CURRENT_DATE())
+      
+  - question: "Show me freshness SLA violations"
+    sql: |
+      SELECT CONTRACT_ID, ALERT_MESSAGE, CREATED_AT
+      FROM GOVERNANCE.OBSERVABILITY.VW_ACTIVE_ALERTS
+      WHERE ALERT_TYPE = 'FRESHNESS'
+      ORDER BY CREATED_AT DESC
+      
+  # Alerts
+  - question: "What alerts are currently active?"
+    sql: |
+      SELECT ALERT_TYPE, ALERT_SEVERITY, COUNT(*) as alert_count
+      FROM GOVERNANCE.OBSERVABILITY.VW_ACTIVE_ALERTS
+      GROUP BY ALERT_TYPE, ALERT_SEVERITY
+      ORDER BY alert_count DESC
+      
+  - question: "Show me critical alerts"
+    sql: |
+      SELECT CONTRACT_ID, ALERT_TYPE, ALERT_MESSAGE, CREATED_AT
+      FROM GOVERNANCE.OBSERVABILITY.VW_ACTIVE_ALERTS
+      WHERE ALERT_SEVERITY = 'CRITICAL'
+      ORDER BY CREATED_AT DESC
+      
+  - question: "Which contracts have the most alerts?"
+    sql: |
+      SELECT CONTRACT_ID, COUNT(*) as alert_count
+      FROM GOVERNANCE.OBSERVABILITY.VW_ACTIVE_ALERTS
+      GROUP BY CONTRACT_ID
+      ORDER BY alert_count DESC
+      LIMIT 10
+      
+  # Tag Coverage
+  - question: "What percentage of columns have governance tags?"
+    sql: |
+      SELECT SUM(TAGGED_COLUMNS) * 100.0 / SUM(TOTAL_COLUMNS) as overall_tag_coverage
+      FROM GOVERNANCE.OBSERVABILITY.VW_TAG_COVERAGE
+      
+  - question: "Which contracts have incomplete tag coverage?"
+    sql: |
+      SELECT CONTRACT_ID, TOTAL_COLUMNS, TAGGED_COLUMNS, TAG_COVERAGE_PCT
+      FROM GOVERNANCE.OBSERVABILITY.VW_TAG_COVERAGE
+      WHERE TAG_COVERAGE_PCT < 100
+      ORDER BY TAG_COVERAGE_PCT ASC
+      
+  - question: "Show me tag coverage by contract"
+    sql: |
+      SELECT CONTRACT_ID, TOTAL_COLUMNS, TAGGED_COLUMNS, TAG_COVERAGE_PCT
+      FROM GOVERNANCE.OBSERVABILITY.VW_TAG_COVERAGE
+      ORDER BY TAG_COVERAGE_PCT DESC
+      
+  # Consumer Dependencies
+  - question: "Which contracts have the most consumers?"
+    sql: |
+      SELECT CONTRACT_ID, CONSUMER_COUNT, OVERALL_HEALTH, QUALITY_SCORE
+      FROM GOVERNANCE.OBSERVABILITY.VW_CONTRACT_HEALTH_DASHBOARD
+      ORDER BY CONSUMER_COUNT DESC
+      LIMIT 10
+      
+  - question: "How many consumers depend on each contract?"
+    sql: |
+      SELECT CONTRACT_ID, CONSUMER_COUNT
+      FROM GOVERNANCE.OBSERVABILITY.VW_CONTRACT_HEALTH_DASHBOARD
+      WHERE CONSUMER_COUNT > 0
+      ORDER BY CONSUMER_COUNT DESC
+
+# ─────────────────────────────────────────────────────────────────────────────
+# FILTERS
+# ─────────────────────────────────────────────────────────────────────────────
+filters:
+  - name: healthy_contracts
+    description: Only healthy contracts
+    expr: OVERALL_HEALTH = 'HEALTHY'
+    
+  - name: critical_contracts
+    description: Contracts with critical issues
+    expr: OVERALL_HEALTH = 'CRITICAL'
+    
+  - name: active_contracts
+    description: Currently active contracts
+    expr: CONTRACT_STATUS = 'active'
+    
+  - name: high_impact
+    description: Contracts with many consumers
+    expr: CONSUMER_COUNT >= 3
+    
+  - name: low_quality
+    description: Contracts with quality issues
+    expr: QUALITY_SCORE < 80
+    
+  - name: full_coverage
+    description: Contracts with 100% tag coverage
+    expr: TAG_COVERAGE_PCT = 100
