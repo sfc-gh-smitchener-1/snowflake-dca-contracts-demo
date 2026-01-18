@@ -243,106 +243,118 @@ GRANT USAGE ON SCHEMA SEM_DEV.SEM_SALES TO ROLE BI_VIEWER;
 GRANT SELECT ON VIEW SEM_DEV.SEM_SALES.VW_SALES_SUMMARY TO ROLE BI_VIEWER;
 
 -- ═══════════════════════════════════════════════════════════════════════════
--- PART 5: CREATE DEMO USERS
+-- PART 5: CREATE DEMO USERS (OPTIONAL)
+-- ═══════════════════════════════════════════════════════════════════════════
+-- 
+-- IMPORTANT: Before running this section, set your own secure passwords!
+-- 
+-- Option 1: Use session variables (recommended for demos)
+--   SET demo_password = 'YourSecurePassword123!';
+--   Then use $demo_password in the CREATE USER statements below
+--
+-- Option 2: Use SSO/SCIM for production environments
+--
+-- Option 3: Replace <YOUR_SECURE_PASSWORD> placeholders below
+--
 -- ═══════════════════════════════════════════════════════════════════════════
 
--- Note: In production, use proper password management and SSO
--- These are demo users with simple passwords for testing
+-- Uncomment and set your password before running user creation:
+-- SET demo_password = '<YOUR_SECURE_PASSWORD>';
 
 -- ─────────────────────────────────────────────────────────────────────────────
 -- ADMIN USER
 -- ─────────────────────────────────────────────────────────────────────────────
-CREATE USER IF NOT EXISTS DEMO_DATA_ADMIN
-    PASSWORD = 'DemoAdmin123!'
-    DEFAULT_ROLE = DATA_ADMIN
-    DEFAULT_WAREHOUSE = ANALYTICS_WH
-    MUST_CHANGE_PASSWORD = FALSE
-    COMMENT = 'Demo data administrator with full access';
-
-GRANT ROLE DATA_ADMIN TO USER DEMO_DATA_ADMIN;
+-- CREATE USER IF NOT EXISTS DEMO_DATA_ADMIN
+--     PASSWORD = $demo_password  -- Or replace with your secure password
+--     DEFAULT_ROLE = DATA_ADMIN
+--     DEFAULT_WAREHOUSE = ANALYTICS_WH
+--     MUST_CHANGE_PASSWORD = TRUE
+--     COMMENT = 'Demo data administrator with full access';
+-- 
+-- GRANT ROLE DATA_ADMIN TO USER DEMO_DATA_ADMIN;
 
 -- ─────────────────────────────────────────────────────────────────────────────
 -- DATA ENGINEER USER
 -- ─────────────────────────────────────────────────────────────────────────────
-CREATE USER IF NOT EXISTS DEMO_DATA_ENGINEER
-    PASSWORD = 'DemoEngineer123!'
-    DEFAULT_ROLE = DATA_ENGINEER
-    DEFAULT_WAREHOUSE = ANALYTICS_WH
-    MUST_CHANGE_PASSWORD = FALSE
-    COMMENT = 'Demo data engineer for pipeline management';
-
-GRANT ROLE DATA_ENGINEER TO USER DEMO_DATA_ENGINEER;
+-- CREATE USER IF NOT EXISTS DEMO_DATA_ENGINEER
+--     PASSWORD = $demo_password
+--     DEFAULT_ROLE = DATA_ENGINEER
+--     DEFAULT_WAREHOUSE = ANALYTICS_WH
+--     MUST_CHANGE_PASSWORD = TRUE
+--     COMMENT = 'Demo data engineer for pipeline management';
+-- 
+-- GRANT ROLE DATA_ENGINEER TO USER DEMO_DATA_ENGINEER;
 
 -- ─────────────────────────────────────────────────────────────────────────────
 -- DATA STEWARD USER
 -- ─────────────────────────────────────────────────────────────────────────────
-CREATE USER IF NOT EXISTS DEMO_DATA_STEWARD
-    PASSWORD = 'DemoSteward123!'
-    DEFAULT_ROLE = DATA_STEWARD
-    DEFAULT_WAREHOUSE = ANALYTICS_WH
-    MUST_CHANGE_PASSWORD = FALSE
-    COMMENT = 'Demo data steward for governance management';
-
-GRANT ROLE DATA_STEWARD TO USER DEMO_DATA_STEWARD;
+-- CREATE USER IF NOT EXISTS DEMO_DATA_STEWARD
+--     PASSWORD = $demo_password
+--     DEFAULT_ROLE = DATA_STEWARD
+--     DEFAULT_WAREHOUSE = ANALYTICS_WH
+--     MUST_CHANGE_PASSWORD = TRUE
+--     COMMENT = 'Demo data steward for governance management';
+-- 
+-- GRANT ROLE DATA_STEWARD TO USER DEMO_DATA_STEWARD;
 
 -- ─────────────────────────────────────────────────────────────────────────────
 -- DATA ANALYST USERS (Multiple to show team access)
 -- ─────────────────────────────────────────────────────────────────────────────
-CREATE USER IF NOT EXISTS DEMO_ANALYST_SALES
-    PASSWORD = 'DemoAnalyst123!'
-    DEFAULT_ROLE = DATA_ANALYST
-    DEFAULT_WAREHOUSE = ANALYTICS_WH
-    MUST_CHANGE_PASSWORD = FALSE
-    COMMENT = 'Demo sales analyst';
+-- CREATE USER IF NOT EXISTS DEMO_ANALYST_SALES
+--     PASSWORD = $demo_password
+--     DEFAULT_ROLE = DATA_ANALYST
+--     DEFAULT_WAREHOUSE = ANALYTICS_WH
+--     MUST_CHANGE_PASSWORD = TRUE
+--     COMMENT = 'Demo sales analyst';
+-- 
+-- GRANT ROLE DATA_ANALYST TO USER DEMO_ANALYST_SALES;
 
-GRANT ROLE DATA_ANALYST TO USER DEMO_ANALYST_SALES;
-
-CREATE USER IF NOT EXISTS DEMO_ANALYST_MARKETING
-    PASSWORD = 'DemoAnalyst123!'
-    DEFAULT_ROLE = DATA_ANALYST
-    DEFAULT_WAREHOUSE = ANALYTICS_WH
-    MUST_CHANGE_PASSWORD = FALSE
-    COMMENT = 'Demo marketing analyst';
-
-GRANT ROLE DATA_ANALYST TO USER DEMO_ANALYST_MARKETING;
+-- CREATE USER IF NOT EXISTS DEMO_ANALYST_MARKETING
+--     PASSWORD = $demo_password
+--     DEFAULT_ROLE = DATA_ANALYST
+--     DEFAULT_WAREHOUSE = ANALYTICS_WH
+--     MUST_CHANGE_PASSWORD = TRUE
+--     COMMENT = 'Demo marketing analyst';
+-- 
+-- GRANT ROLE DATA_ANALYST TO USER DEMO_ANALYST_MARKETING;
 
 -- ─────────────────────────────────────────────────────────────────────────────
 -- AI AGENT SERVICE ACCOUNT
 -- ─────────────────────────────────────────────────────────────────────────────
-CREATE USER IF NOT EXISTS DEMO_AI_AGENT
-    PASSWORD = 'DemoAIAgent123!'
-    DEFAULT_ROLE = AI_AGENT
-    DEFAULT_WAREHOUSE = ANALYTICS_WH
-    MUST_CHANGE_PASSWORD = FALSE
-    COMMENT = 'Demo AI/ML service account for Cortex and ML workloads';
-
-GRANT ROLE AI_AGENT TO USER DEMO_AI_AGENT;
+-- CREATE USER IF NOT EXISTS DEMO_AI_AGENT
+--     PASSWORD = $demo_password
+--     DEFAULT_ROLE = AI_AGENT
+--     DEFAULT_WAREHOUSE = ANALYTICS_WH
+--     MUST_CHANGE_PASSWORD = TRUE
+--     COMMENT = 'Demo AI/ML service account for Cortex and ML workloads';
+-- 
+-- GRANT ROLE AI_AGENT TO USER DEMO_AI_AGENT;
 
 -- ─────────────────────────────────────────────────────────────────────────────
 -- BI VIEWER USER (Executive Dashboard Access)
 -- ─────────────────────────────────────────────────────────────────────────────
-CREATE USER IF NOT EXISTS DEMO_BI_VIEWER
-    PASSWORD = 'DemoBIViewer123!'
-    DEFAULT_ROLE = BI_VIEWER
-    DEFAULT_WAREHOUSE = ANALYTICS_WH
-    MUST_CHANGE_PASSWORD = FALSE
-    COMMENT = 'Demo BI viewer for dashboard consumption';
-
-GRANT ROLE BI_VIEWER TO USER DEMO_BI_VIEWER;
+-- CREATE USER IF NOT EXISTS DEMO_BI_VIEWER
+--     PASSWORD = $demo_password
+--     DEFAULT_ROLE = BI_VIEWER
+--     DEFAULT_WAREHOUSE = ANALYTICS_WH
+--     MUST_CHANGE_PASSWORD = TRUE
+--     COMMENT = 'Demo BI viewer for dashboard consumption';
+-- 
+-- GRANT ROLE BI_VIEWER TO USER DEMO_BI_VIEWER;
 
 -- ─────────────────────────────────────────────────────────────────────────────
 -- PII VIEWER USER (Privileged Access)
 -- ─────────────────────────────────────────────────────────────────────────────
-CREATE USER IF NOT EXISTS DEMO_PII_VIEWER
-    PASSWORD = 'DemoPIIViewer123!'
-    DEFAULT_ROLE = PII_VIEWER
-    DEFAULT_WAREHOUSE = ANALYTICS_WH
-    MUST_CHANGE_PASSWORD = FALSE
-    COMMENT = 'Demo user with PII access for compliance/legal';
-
-GRANT ROLE PII_VIEWER TO USER DEMO_PII_VIEWER;
--- Also grant DATA_ANALYST so they can access semantic layer
-GRANT ROLE DATA_ANALYST TO USER DEMO_PII_VIEWER;
+-- CREATE USER IF NOT EXISTS DEMO_PII_VIEWER
+--     PASSWORD = $demo_password
+--     DEFAULT_ROLE = PII_VIEWER
+--     DEFAULT_WAREHOUSE = ANALYTICS_WH
+--     MUST_CHANGE_PASSWORD = TRUE
+--     COMMENT = 'Demo user with PII access for compliance/legal';
+-- 
+-- GRANT ROLE PII_VIEWER TO USER DEMO_PII_VIEWER;
+-- -- Also grant DATA_ANALYST so they can access semantic layer
+-- GRANT ROLE DATA_ANALYST TO USER DEMO_PII_VIEWER;
 
 -- ═══════════════════════════════════════════════════════════════════════════
 -- PART 6: ROLE ACCESS SUMMARY VIEW

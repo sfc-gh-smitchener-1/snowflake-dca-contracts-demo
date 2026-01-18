@@ -32,32 +32,32 @@ This demo showcases a **contract-first data architecture** in Snowflake, impleme
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────────┐
-│                           DATA CONTRACTS ARCHITECTURE                        │
+│                           DATA CONTRACTS ARCHITECTURE                       │
 ├─────────────────────────────────────────────────────────────────────────────┤
 │                                                                             │
-│  ┌─────────────┐    ┌─────────────┐    ┌─────────────┐    ┌─────────────┐  │
-│  │   SOURCE    │    │     RAW     │    │   CURATED   │    │  SEMANTIC   │  │
-│  │   SYSTEMS   │───▶│    LAYER    │───▶│    LAYER    │───▶│    LAYER    │  │
-│  │             │    │             │    │             │    │             │  │
-│  │ TPCH Sample │    │ Direct Load │    │  Dynamic    │    │ Semantic    │  │
-│  │ (or any     │    │ + CDC       │    │  Tables     │    │ Views +     │  │
-│  │  source)    │    │ + Current   │    │ + Business  │    │ Cortex AI   │  │
-│  │             │    │   Records   │    │   Rules     │    │             │  │
-│  └─────────────┘    └─────────────┘    └─────────────┘    └─────────────┘  │
+│  ┌─────────────┐    ┌─────────────┐    ┌─────────────┐    ┌─────────────┐   │
+│  │   SOURCE    │    │     RAW     │    │   CURATED   │    │  SEMANTIC   │   │
+│  │   SYSTEMS   │───▶│    LAYER    │───▶│    LAYER    │───▶│    LAYER    │   │
+│  │             │    │             │    │             │    │             │   │
+│  │ TPCH Sample │    │ Direct Load │    │  Dynamic    │    │ Semantic    │   │
+│  │ (or any     │    │ + CDC       │    │  Tables     │    │ Views +     │   │
+│  │  source)    │    │ + Current   │    │ + Business  │    │ Cortex AI   │   │
+│  │             │    │   Records   │    │   Rules     │    │             │   │
+│  └─────────────┘    └─────────────┘    └─────────────┘    └─────────────┘   │
 │         │                  │                  │                  │          │
 │         ▼                  ▼                  ▼                  ▼          │
-│  ┌───────────────────────────────────────────────────────────────────────┐ │
-│  │                        CONTRACT REGISTRY                              │ │
-│  │  • Schema Definitions    • Quality Rules    • SLA Monitoring         │ │
-│  │  • Governance Tags       • Consumer Registry • Breaking Changes      │ │
-│  └───────────────────────────────────────────────────────────────────────┘ │
+│  ┌───────────────────────────────────────────────────────────────────────┐  │
+│  │                        CONTRACT REGISTRY                              │  │
+│  │  • Schema Definitions    • Quality Rules    • SLA Monitoring          │  │
+│  │  • Governance Tags       • Consumer Registry • Breaking Changes       │  │
+│  └───────────────────────────────────────────────────────────────────────┘  │
 │                                    │                                        │
 │                                    ▼                                        │
-│  ┌───────────────────────────────────────────────────────────────────────┐ │
-│  │                     OBSERVABILITY DASHBOARD                           │ │
-│  │  • Contract Health    • SLA Compliance    • Quality Scores           │ │
-│  │  • Active Alerts      • Lineage Graph     • Tag Coverage             │ │
-│  └───────────────────────────────────────────────────────────────────────┘ │
+│  ┌───────────────────────────────────────────────────────────────────────┐  │
+│  │                     OBSERVABILITY DASHBOARD                           │  │
+│  │  • Contract Health    • SLA Compliance    • Quality Scores            │  │
+│  │  • Active Alerts      • Lineage Graph     • Tag Coverage              │  │
+│  └───────────────────────────────────────────────────────────────────────┘  │
 │                                                                             │
 └─────────────────────────────────────────────────────────────────────────────┘
 ```
