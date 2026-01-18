@@ -607,6 +607,36 @@ FROM SEM_DEV.SEM_SALES.SEMANTIC_MODEL_REGISTRY
 ORDER BY MODEL_NAME;
 
 -- ─────────────────────────────────────────────────────────────────────────────
+-- UPLOAD SEMANTIC MODELS TO STAGE
+-- ─────────────────────────────────────────────────────────────────────────────
+-- IMPORTANT: The YAML files in the /semantic_models folder must be uploaded
+-- to the Snowflake stage for Cortex Analyst to use them.
+--
+-- OPTION 1: Using SnowSQL CLI (recommended for production)
+-- Run these commands from the terminal in the project root directory:
+--
+--   snowsql -a <account> -u <user> -d SEM_DEV -s SEM_SALES -w ANALYTICS_WH
+--
+--   PUT file://semantic_models/sales_analytics_model.yaml @SEMANTIC_MODELS AUTO_COMPRESS=FALSE OVERWRITE=TRUE;
+--   PUT file://semantic_models/customer_analytics_model.yaml @SEMANTIC_MODELS AUTO_COMPRESS=FALSE OVERWRITE=TRUE;
+--   PUT file://semantic_models/product_analytics_model.yaml @SEMANTIC_MODELS AUTO_COMPRESS=FALSE OVERWRITE=TRUE;
+--   PUT file://semantic_models/supplier_analytics_model.yaml @SEMANTIC_MODELS AUTO_COMPRESS=FALSE OVERWRITE=TRUE;
+--   PUT file://semantic_models/governance_analytics_model.yaml @SEMANTIC_MODELS AUTO_COMPRESS=FALSE OVERWRITE=TRUE;
+--
+-- OPTION 2: Using Snowsight UI
+--   1. Navigate to Data > Databases > SEM_DEV > SEM_SALES > Stages > SEMANTIC_MODELS
+--   2. Click "Upload Files" button
+--   3. Select all YAML files from the /semantic_models folder
+--   4. Ensure AUTO_COMPRESS is OFF (files should remain as .yaml)
+--
+-- OPTION 3: Using Python with snowflake-connector-python
+--   See tools/upload_semantic_models.py
+-- ─────────────────────────────────────────────────────────────────────────────
+
+-- List files in stage (verify upload)
+LIST @SEM_DEV.SEM_SALES.SEMANTIC_MODELS;
+
+-- ─────────────────────────────────────────────────────────────────────────────
 -- VERIFICATION
 -- ─────────────────────────────────────────────────────────────────────────────
 
@@ -627,3 +657,7 @@ SELECT 'VW_SUPPLIER_ANALYTICS', COUNT(*) FROM SEM_DEV.SEM_SALES.VW_SUPPLIER_ANAL
 
 -- Show registered semantic models
 SELECT * FROM SEM_DEV.SEM_SALES.VW_AVAILABLE_SEMANTIC_MODELS;
+
+-- Verify files are in stage
+SELECT 'Files in SEMANTIC_MODELS stage:' AS STATUS;
+LIST @SEM_DEV.SEM_SALES.SEMANTIC_MODELS;

@@ -99,7 +99,28 @@ This demo showcases a **contract-first data architecture** in Snowflake, impleme
    
    -- Step 6: Semantic Layer
    -- Run: sql/06_semantic_layer.sql
+   ```
+
+4. **Upload Semantic Models to Stage** (required for Cortex Analyst)
+   ```bash
+   # Using SnowSQL CLI (run from project root directory)
+   cd snowflake-dca-contracts-demo
+   snowsql -a <account> -u <user> -f tools/upload_semantic_models.sql
    
+   # Or using Python
+   pip install snowflake-connector-python
+   export SNOWFLAKE_ACCOUNT=<account>
+   export SNOWFLAKE_USER=<user>
+   export SNOWFLAKE_PASSWORD=<password>
+   python tools/upload_semantic_models.py
+   ```
+   
+   Alternatively, upload via Snowsight UI:
+   - Navigate to Data → Databases → SEM_DEV → SEM_SALES → Stages → SEMANTIC_MODELS
+   - Click "Upload Files" and select all files from `semantic_models/` folder
+
+5. **Continue with remaining scripts**
+   ```sql
    -- Step 7: Contract Validation
    -- Run: sql/07_contract_validation.sql
    
@@ -113,7 +134,7 @@ This demo showcases a **contract-first data architecture** in Snowflake, impleme
    -- Run: sql/10_roles_and_users.sql
    ```
 
-3. **Verify the installation**
+6. **Verify the installation**
    ```sql
    -- Check dashboard KPIs
    SELECT * FROM GOVERNANCE.OBSERVABILITY.VW_DASHBOARD_KPIS;
