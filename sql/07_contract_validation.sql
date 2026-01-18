@@ -128,14 +128,14 @@ BEGIN
         RESULT_ID, RULE_ID, CONTRACT_ID, EXECUTION_TIME, PASSED, RESULT_VALUE
     ) VALUES (
         UUID_STRING(),
-        P_RULE_ID,
-        P_CONTRACT_ID,
+        :P_RULE_ID,
+        :P_CONTRACT_ID,
         CURRENT_TIMESTAMP(),
-        P_PASSED,
-        PARSE_JSON('{"message": "' || P_MESSAGE || '"}')
+        :P_PASSED,
+        PARSE_JSON('{"message": "' || :P_MESSAGE || '"}')
     );
     
-    RETURN 'Logged result for rule ' || P_RULE_ID || ': ' || IFF(P_PASSED, 'PASSED', 'FAILED');
+    RETURN 'Logged result for rule ' || :P_RULE_ID || ': ' || IFF(:P_PASSED, 'PASSED', 'FAILED');
 END;
 $$;
 
@@ -157,7 +157,7 @@ DECLARE
     v_is_violation BOOLEAN;
     v_severity VARCHAR;
 BEGIN
-    v_is_violation := (P_MEASURED_VALUE > P_THRESHOLD_VALUE);
+    v_is_violation := (:P_MEASURED_VALUE > :P_THRESHOLD_VALUE);
     v_severity := IFF(v_is_violation, 'error', 'ok');
     
     INSERT INTO GOVERNANCE.CONTRACT_REGISTRY.SLA_METRICS (
@@ -165,18 +165,18 @@ BEGIN
         IS_VIOLATION, VIOLATION_SEVERITY, MEASURED_AT
     ) VALUES (
         UUID_STRING(),
-        P_CONTRACT_ID,
-        P_SLA_ID,
-        P_MEASURED_VALUE,
-        P_THRESHOLD_VALUE,
-        v_is_violation,
-        v_severity,
+        :P_CONTRACT_ID,
+        :P_SLA_ID,
+        :P_MEASURED_VALUE,
+        :P_THRESHOLD_VALUE,
+        :v_is_violation,
+        :v_severity,
         CURRENT_TIMESTAMP()
     );
     
-    RETURN 'Logged SLA metric for ' || P_SLA_ID || ': ' || 
-           P_MEASURED_VALUE::VARCHAR || ' / ' || P_THRESHOLD_VALUE::VARCHAR || 
-           ' - ' || IFF(v_is_violation, 'VIOLATION', 'OK');
+    RETURN 'Logged SLA metric for ' || :P_SLA_ID || ': ' || 
+           :P_MEASURED_VALUE::VARCHAR || ' / ' || :P_THRESHOLD_VALUE::VARCHAR || 
+           ' - ' || IFF(:v_is_violation, 'VIOLATION', 'OK');
 END;
 $$;
 
@@ -207,7 +207,7 @@ BEGIN
         COALESCE(COUNT(*), 0)
     INTO v_rules_passed, v_rules_total
     FROM GOVERNANCE.CONTRACT_REGISTRY.QUALITY_RULE_RESULTS
-    WHERE CONTRACT_ID = P_CONTRACT_ID
+    WHERE CONTRACT_ID = :P_CONTRACT_ID
       AND EXECUTION_TIME > DATEADD('hour', -24, CURRENT_TIMESTAMP());
     
     IF (v_rules_total > 0) THEN
@@ -220,7 +220,7 @@ BEGIN
         COALESCE(COUNT(*), 0)
     INTO v_sla_violations, v_sla_checks
     FROM GOVERNANCE.CONTRACT_REGISTRY.SLA_METRICS
-    WHERE CONTRACT_ID = P_CONTRACT_ID
+    WHERE CONTRACT_ID = :P_CONTRACT_ID
       AND MEASURED_AT > DATEADD('hour', -24, CURRENT_TIMESTAMP());
     
     IF (v_sla_checks > 0) THEN
@@ -240,16 +240,16 @@ BEGIN
     END;
     
     RETURN OBJECT_CONSTRUCT(
-        'contract_id', P_CONTRACT_ID,
+        'contract_id', :P_CONTRACT_ID,
         'calculated_at', CURRENT_TIMESTAMP(),
-        'overall_score', ROUND(v_overall_score, 1),
-        'quality_score', ROUND(v_quality_score, 1),
-        'sla_score', ROUND(v_sla_score, 1),
-        'rules_passed', v_rules_passed,
-        'rules_total', v_rules_total,
-        'sla_violations', v_sla_violations,
-        'sla_checks', v_sla_checks,
-        'grade', v_grade
+        'overall_score', ROUND(:v_overall_score, 1),
+        'quality_score', ROUND(:v_quality_score, 1),
+        'sla_score', ROUND(:v_sla_score, 1),
+        'rules_passed', :v_rules_passed,
+        'rules_total', :v_rules_total,
+        'sla_violations', :v_sla_violations,
+        'sla_checks', :v_sla_checks,
+        'grade', :v_grade
     );
 END;
 $$;
@@ -274,27 +274,27 @@ BEGIN
     SELECT TRUE, CONTRACT_TYPE, STATUS
     INTO v_contract_exists, v_contract_type, v_status
     FROM GOVERNANCE.CONTRACT_REGISTRY.CONTRACTS
-    WHERE CONTRACT_ID = P_CONTRACT_ID
+    WHERE CONTRACT_ID = :P_CONTRACT_ID
     ORDER BY VERSION DESC
     LIMIT 1;
     
     IF (NOT v_contract_exists) THEN
-        RETURN 'ERROR: Contract not found - ' || P_CONTRACT_ID;
+        RETURN 'ERROR: Contract not found - ' || :P_CONTRACT_ID;
     END IF;
     
-    IF (v_status != 'active') THEN
-        RETURN 'WARNING: Contract is not active - Status: ' || v_status;
+    IF (:v_status != 'active') THEN
+        RETURN 'WARNING: Contract is not active - Status: ' || :v_status;
     END IF;
     
     -- Log validation event
     CALL GOVERNANCE.CONTRACT_REGISTRY.LOG_QUALITY_RESULT(
-        P_CONTRACT_ID, 
+        :P_CONTRACT_ID, 
         'contract_validation', 
         TRUE, 
         'Contract validated successfully'
     );
     
-    RETURN 'OK: Contract validated - ' || P_CONTRACT_ID || ' (type: ' || v_contract_type || ')';
+    RETURN 'OK: Contract validated - ' || :P_CONTRACT_ID || ' (type: ' || :v_contract_type || ')';
 END;
 $$;
 
