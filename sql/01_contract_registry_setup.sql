@@ -393,26 +393,34 @@ LANGUAGE SQL
 AS
 $$
 DECLARE
-    v_consumer_count INT;
+    v_consumer_count INT DEFAULT 0;
+    c1 CURSOR FOR 
+        SELECT COUNT(*) AS cnt
+        FROM GOVERNANCE.CONTRACT_REGISTRY.CONTRACT_CONSUMERS
+        WHERE CONTRACT_ID = ?
+          AND NOTIFY_BREAKING = TRUE;
 BEGIN
+    -- Get count of consumers to notify
+    OPEN c1 USING (P_CONTRACT_ID);
+    FETCH c1 INTO v_consumer_count;
+    CLOSE c1;
+    
     -- Insert approval requests for all consumers who want breaking change notifications
     INSERT INTO GOVERNANCE.CONTRACT_REGISTRY.BREAKING_CHANGE_APPROVALS
         (APPROVAL_ID, CONTRACT_ID, FROM_VERSION, TO_VERSION, CONSUMER_ID, STATUS, DEADLINE_AT)
     SELECT 
         UUID_STRING(),
-        :P_CONTRACT_ID,
-        :P_FROM_VERSION,
-        :P_TO_VERSION,
+        P_CONTRACT_ID,
+        P_FROM_VERSION,
+        P_TO_VERSION,
         CONSUMER_ID,
         'pending',
-        DATEADD('day', :P_DEADLINE_DAYS, CURRENT_TIMESTAMP())
+        DATEADD('day', P_DEADLINE_DAYS, CURRENT_TIMESTAMP())
     FROM GOVERNANCE.CONTRACT_REGISTRY.CONTRACT_CONSUMERS
-    WHERE CONTRACT_ID = :P_CONTRACT_ID
+    WHERE CONTRACT_ID = P_CONTRACT_ID
       AND NOTIFY_BREAKING = TRUE;
     
-    GET DIAGNOSTICS v_consumer_count = ROW_COUNT;
-    
-    RETURN 'Created ' || v_consumer_count || ' approval requests for contract ' || P_CONTRACT_ID;
+    RETURN 'Created ' || v_consumer_count::VARCHAR || ' approval requests for contract ' || P_CONTRACT_ID;
 END;
 $$;
 
