@@ -65,7 +65,7 @@ tables:
         synonyms:
           - lifecycle status
         description: Contract lifecycle status (active, deprecated, draft)
-        expr: CONTRACT_STATUS
+        expr: STATUS
         data_type: VARCHAR
 
     measures:
@@ -108,12 +108,12 @@ tables:
         data_type: NUMBER
         default_aggregation: sum
         
-      - name: total_quality_rules
+      - name: total_rules_checked
         synonyms:
           - quality rules
           - rules
-        description: Total number of quality rules
-        expr: SUM(QUALITY_RULE_COUNT)
+        description: Total number of quality rules checked
+        expr: SUM(RULES_TOTAL)
         data_type: NUMBER
         default_aggregation: sum
 
@@ -226,22 +226,22 @@ tables:
         data_type: NUMBER
         default_aggregation: sum
         
-      - name: tagged_columns
+      - name: business_columns
         synonyms:
           - tagged
           - columns with tags
-        description: Columns with governance tags
-        expr: SUM(TAGGED_COLUMNS)
+        description: Business columns (non-system)
+        expr: SUM(BUSINESS_COLUMNS)
         data_type: NUMBER
         default_aggregation: sum
         
-      - name: average_tag_coverage
+      - name: average_classification_coverage
         synonyms:
           - tag coverage
           - coverage percentage
           - governance coverage
-        description: Average tag coverage percentage
-        expr: AVG(TAG_COVERAGE_PCT)
+        description: Average classification tag coverage percentage
+        expr: AVG(CLASSIFICATION_COVERAGE_PCT)
         data_type: NUMBER
         default_aggregation: avg
 
@@ -256,13 +256,13 @@ tables:
       table: VW_SLA_COMPLIANCE_TREND
     
     dimensions:
-      - name: metric_date
+      - name: hour
         synonyms:
           - date
-          - day
-        description: Date of the metric
-        expr: METRIC_DATE
-        data_type: DATE
+          - time
+        description: Hour of the metric
+        expr: HOUR
+        data_type: TIMESTAMP
         
       - name: contract_id
         synonyms:
@@ -272,13 +272,13 @@ tables:
         data_type: VARCHAR
 
     measures:
-      - name: compliance_percentage
+      - name: compliance_rate
         synonyms:
-          - compliance rate
+          - compliance percentage
           - sla compliance
           - compliance
-        description: SLA compliance percentage
-        expr: AVG(COMPLIANCE_PCT)
+        description: SLA compliance rate percentage
+        expr: AVG(COMPLIANCE_RATE)
         data_type: NUMBER
         default_aggregation: avg
 
@@ -286,35 +286,44 @@ tables:
   # Dashboard KPIs
   # ─────────────────────────────────────────────────────────────────────────
   - name: VW_DASHBOARD_KPIS
-    description: High-level governance KPIs
+    description: High-level governance KPIs - single row summary view
     base_table:
       database: GOVERNANCE
       schema: OBSERVABILITY
       table: VW_DASHBOARD_KPIS
-    
-    dimensions:
-      - name: kpi_name
-        synonyms:
-          - metric
-          - kpi
-        description: Name of the KPI
-        expr: KPI_NAME
-        data_type: VARCHAR
-        
-      - name: kpi_category
-        synonyms:
-          - category
-        description: Category of the KPI
-        expr: KPI_CATEGORY
-        data_type: VARCHAR
 
     measures:
-      - name: kpi_value
+      - name: active_contracts
         synonyms:
-          - value
-          - metric value
-        description: Value of the KPI
-        expr: SUM(KPI_VALUE)
+          - contracts
+          - active contract count
+        description: Number of active contracts
+        expr: SUM(ACTIVE_CONTRACTS)
+        data_type: NUMBER
+        default_aggregation: sum
+        
+      - name: avg_health_score
+        synonyms:
+          - health score
+          - average health
+        description: Average health score across contracts
+        expr: AVG(AVG_HEALTH_SCORE)
+        data_type: NUMBER
+        default_aggregation: avg
+        
+      - name: healthy_count
+        synonyms:
+          - healthy contracts
+        description: Number of healthy contracts
+        expr: SUM(HEALTHY_COUNT)
+        data_type: NUMBER
+        default_aggregation: sum
+        
+      - name: critical_alerts
+        synonyms:
+          - critical alert count
+        description: Number of critical alerts
+        expr: SUM(CRITICAL_ALERTS)
         data_type: NUMBER
         default_aggregation: sum
 
@@ -343,7 +352,7 @@ verifiedQueries:
     sql: |
       SELECT COUNT(*) as active_contracts
       FROM GOVERNANCE.OBSERVABILITY.VW_CONTRACT_HEALTH_DASHBOARD
-      WHERE CONTRACT_STATUS = 'active'
+      WHERE STATUS = 'active'
       
   - name: avg_quality_score
     question: What is our average quality score across all contracts?
@@ -361,9 +370,9 @@ verifiedQueries:
   - name: overall_sla_compliance
     question: What is our overall SLA compliance rate?
     sql: |
-      SELECT AVG(COMPLIANCE_PCT) as overall_compliance
+      SELECT AVG(COMPLIANCE_RATE) as overall_compliance
       FROM GOVERNANCE.OBSERVABILITY.VW_SLA_COMPLIANCE_TREND
-      WHERE METRIC_DATE >= DATEADD(day, -7, CURRENT_DATE())
+      WHERE HOUR >= DATEADD(day, -7, CURRENT_TIMESTAMP())
       
   - name: freshness_violations
     question: Show me freshness SLA violations
@@ -401,23 +410,23 @@ verifiedQueries:
   - name: tag_coverage_percent
     question: What percentage of columns have governance tags?
     sql: |
-      SELECT SUM(TAGGED_COLUMNS) * 100.0 / SUM(TOTAL_COLUMNS) as overall_tag_coverage
+      SELECT AVG(CLASSIFICATION_COVERAGE_PCT) as overall_tag_coverage
       FROM GOVERNANCE.OBSERVABILITY.VW_TAG_COVERAGE
       
   - name: incomplete_tag_coverage
     question: Which contracts have incomplete tag coverage?
     sql: |
-      SELECT CONTRACT_ID, TOTAL_COLUMNS, TAGGED_COLUMNS, TAG_COVERAGE_PCT
+      SELECT CONTRACT_ID, TOTAL_COLUMNS, BUSINESS_COLUMNS, CLASSIFICATION_COVERAGE_PCT
       FROM GOVERNANCE.OBSERVABILITY.VW_TAG_COVERAGE
-      WHERE TAG_COVERAGE_PCT < 100
-      ORDER BY TAG_COVERAGE_PCT ASC
+      WHERE CLASSIFICATION_COVERAGE_PCT < 100
+      ORDER BY CLASSIFICATION_COVERAGE_PCT ASC
       
   - name: tag_coverage_by_contract
     question: Show me tag coverage by contract
     sql: |
-      SELECT CONTRACT_ID, TOTAL_COLUMNS, TAGGED_COLUMNS, TAG_COVERAGE_PCT
+      SELECT CONTRACT_ID, TOTAL_COLUMNS, BUSINESS_COLUMNS, CLASSIFICATION_COVERAGE_PCT
       FROM GOVERNANCE.OBSERVABILITY.VW_TAG_COVERAGE
-      ORDER BY TAG_COVERAGE_PCT DESC
+      ORDER BY CLASSIFICATION_COVERAGE_PCT DESC
       
   - name: most_consumers
     question: Which contracts have the most consumers?
