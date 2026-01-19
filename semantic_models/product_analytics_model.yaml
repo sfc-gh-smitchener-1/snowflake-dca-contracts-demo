@@ -4,6 +4,7 @@
 # This semantic model enables natural language queries on product performance,
 # inventory levels, and supply chain analytics through Cortex Analyst.
 # No PII present - fully safe for AI workloads.
+# Version: 1.0.0 | Owner: demo-team@company.com
 # ============================================================================
 
 name: product_analytics
@@ -11,19 +12,6 @@ description: |
   Product analytics semantic model for supply chain AI and inventory intelligence.
   Includes sales performance, inventory levels, margin analysis, and supplier metrics.
   No PII present - safe for all AI/ML workloads.
-
-version: 1.0.0
-owner: demo-team@company.com
-
-# ─────────────────────────────────────────────────────────────────────────────
-# DATABASE CONFIGURATION
-# ─────────────────────────────────────────────────────────────────────────────
-database: SEM_DEV
-schema: SEM_PRODUCT
-
-# ─────────────────────────────────────────────────────────────────────────────
-# TABLES
-# ─────────────────────────────────────────────────────────────────────────────
 tables:
   - name: VW_PRODUCT_ANALYTICS
     description: Product performance and inventory analytics view
@@ -259,24 +247,27 @@ tables:
         default_aggregation: avg
 
 # ─────────────────────────────────────────────────────────────────────────────
-# SAMPLE QUESTIONS FOR TRAINING
+# VERIFIED QUERIES
 # ─────────────────────────────────────────────────────────────────────────────
-sample_questions:
-  - question: "Which products are out of stock?"
+verifiedQueries:
+  - name: out_of_stock_products
+    question: Which products are out of stock?
     sql: |
       SELECT PART_NAME, MANUFACTURER, BRAND, TOTAL_QUANTITY_SOLD, GROSS_REVENUE
       FROM SEM_DEV.SEM_PRODUCT.VW_PRODUCT_ANALYTICS
       WHERE INVENTORY_STATUS = 'OUT_OF_STOCK'
       ORDER BY GROSS_REVENUE DESC
       
-  - question: "Show me top performing products"
+  - name: top_performing_products
+    question: Show me top performing products
     sql: |
       SELECT PART_NAME, MANUFACTURER, BRAND, GROSS_REVENUE, NET_REVENUE, GROSS_MARGIN_PCT
       FROM SEM_DEV.SEM_PRODUCT.VW_PRODUCT_ANALYTICS
       WHERE PERFORMANCE_TIER = 'TOP_PERFORMER'
       ORDER BY GROSS_REVENUE DESC
       
-  - question: "What is the revenue by manufacturer?"
+  - name: revenue_by_manufacturer
+    question: What is the revenue by manufacturer?
     sql: |
       SELECT MANUFACTURER, 
              COUNT(DISTINCT PART_KEY) as products,
@@ -286,7 +277,8 @@ sample_questions:
       GROUP BY MANUFACTURER
       ORDER BY total_revenue DESC
       
-  - question: "Which products have low stock but high sales?"
+  - name: low_stock_high_sales
+    question: Which products have low stock but high sales?
     sql: |
       SELECT PART_NAME, MANUFACTURER, INVENTORY_STATUS, INVENTORY_ON_HAND, TOTAL_QUANTITY_SOLD, GROSS_REVENUE
       FROM SEM_DEV.SEM_PRODUCT.VW_PRODUCT_ANALYTICS
@@ -294,12 +286,14 @@ sample_questions:
         AND PERFORMANCE_TIER IN ('TOP_PERFORMER', 'STRONG_PERFORMER')
       ORDER BY GROSS_REVENUE DESC
       
-  - question: "What is our total inventory value?"
+  - name: total_inventory_value
+    question: What is our total inventory value?
     sql: |
       SELECT SUM(INVENTORY_VALUE) as total_inventory_value
       FROM SEM_DEV.SEM_PRODUCT.VW_PRODUCT_ANALYTICS
       
-  - question: "Show me product margin by price tier"
+  - name: margin_by_price_tier
+    question: Show me product margin by price tier
     sql: |
       SELECT PRICE_TIER,
              COUNT(DISTINCT PART_KEY) as products,
@@ -308,27 +302,3 @@ sample_questions:
       FROM SEM_DEV.SEM_PRODUCT.VW_PRODUCT_ANALYTICS
       GROUP BY PRICE_TIER
       ORDER BY avg_margin_pct DESC
-
-# ─────────────────────────────────────────────────────────────────────────────
-# FILTERS (Common WHERE clauses)
-# ─────────────────────────────────────────────────────────────────────────────
-filters:
-  - name: in_stock
-    description: Products that are in stock
-    expr: INVENTORY_STATUS != 'OUT_OF_STOCK'
-    
-  - name: low_stock
-    description: Products with low stock
-    expr: INVENTORY_STATUS = 'LOW_STOCK'
-    
-  - name: top_performers
-    description: Top performing products by revenue
-    expr: PERFORMANCE_TIER = 'TOP_PERFORMER'
-    
-  - name: premium_products
-    description: Premium priced products
-    expr: PRICE_TIER = 'PREMIUM'
-    
-  - name: high_margin
-    description: Products with high margin (> 30%)
-    expr: GROSS_MARGIN_PCT > 30

@@ -4,6 +4,7 @@
 # This semantic model enables natural language queries on customer data
 # for segmentation, RFM analysis, and churn prediction through Cortex Analyst.
 # All customer PII is pseudonymized for AI safety.
+# Version: 1.0.0 | Owner: demo-team@company.com
 # ============================================================================
 
 name: customer_analytics
@@ -11,19 +12,6 @@ description: |
   Customer analytics semantic model for AI-powered customer insights.
   Includes RFM scoring, segmentation, and engagement metrics.
   All customer PII is pseudonymized, making this safe for AI training and embeddings.
-
-version: 1.0.0
-owner: demo-team@company.com
-
-# ─────────────────────────────────────────────────────────────────────────────
-# DATABASE CONFIGURATION
-# ─────────────────────────────────────────────────────────────────────────────
-database: SEM_DEV
-schema: SEM_CUSTOMER
-
-# ─────────────────────────────────────────────────────────────────────────────
-# TABLES
-# ─────────────────────────────────────────────────────────────────────────────
 tables:
   - name: VW_CUSTOMER_ANALYTICS
     description: Customer analytics view with RFM scoring and segmentation
@@ -214,22 +202,25 @@ tables:
         default_aggregation: avg
 
 # ─────────────────────────────────────────────────────────────────────────────
-# SAMPLE QUESTIONS FOR TRAINING
+# VERIFIED QUERIES
 # ─────────────────────────────────────────────────────────────────────────────
-sample_questions:
-  - question: "How many customers do we have?"
+verifiedQueries:
+  - name: customer_count
+    question: How many customers do we have?
     sql: |
       SELECT COUNT(DISTINCT CUSTOMER_ID) as customer_count
       FROM SEM_DEV.SEM_CUSTOMER.VW_CUSTOMER_ANALYTICS
       
-  - question: "Show me customers by segment"
+  - name: customers_by_segment
+    question: Show me customers by segment
     sql: |
       SELECT CUSTOMER_SEGMENT, COUNT(*) as customer_count
       FROM SEM_DEV.SEM_CUSTOMER.VW_CUSTOMER_ANALYTICS
       GROUP BY CUSTOMER_SEGMENT
       ORDER BY customer_count DESC
       
-  - question: "Which customers are at risk of churning?"
+  - name: at_risk_customers
+    question: Which customers are at risk of churning?
     sql: |
       SELECT CUSTOMER_SEGMENT, REGION_NAME, COUNT(*) as customer_count, AVG(LIFETIME_VALUE) as avg_ltv
       FROM SEM_DEV.SEM_CUSTOMER.VW_CUSTOMER_ANALYTICS
@@ -237,7 +228,8 @@ sample_questions:
       GROUP BY CUSTOMER_SEGMENT, REGION_NAME
       ORDER BY avg_ltv DESC
       
-  - question: "What is the average lifetime value by market segment?"
+  - name: ltv_by_segment
+    question: What is the average lifetime value by market segment?
     sql: |
       SELECT MARKET_SEGMENT, 
              COUNT(*) as customers,
@@ -247,7 +239,8 @@ sample_questions:
       GROUP BY MARKET_SEGMENT
       ORDER BY avg_ltv DESC
       
-  - question: "Show me RFM scores by region"
+  - name: rfm_by_region
+    question: Show me RFM scores by region
     sql: |
       SELECT REGION_NAME,
              AVG(RECENCY_SCORE) as avg_recency,
@@ -257,32 +250,9 @@ sample_questions:
       GROUP BY REGION_NAME
       ORDER BY avg_monetary DESC
       
-  - question: "How many customers have churned?"
+  - name: churned_customers
+    question: How many customers have churned?
     sql: |
       SELECT COUNT(*) as churned_customers
       FROM SEM_DEV.SEM_CUSTOMER.VW_CUSTOMER_ANALYTICS
       WHERE CUSTOMER_SEGMENT = 'LOST'
-
-# ─────────────────────────────────────────────────────────────────────────────
-# FILTERS (Common WHERE clauses)
-# ─────────────────────────────────────────────────────────────────────────────
-filters:
-  - name: active_customers
-    description: Only active customers
-    expr: ACTIVITY_STATUS = 'ACTIVE'
-    
-  - name: at_risk_customers
-    description: Customers at risk of churning
-    expr: CUSTOMER_SEGMENT IN ('AT_RISK', 'HIGH_VALUE_AT_RISK')
-    
-  - name: premium_customers
-    description: Premium tier customers
-    expr: CUSTOMER_TIER = 'PREMIUM'
-    
-  - name: champions
-    description: Champion segment customers (best customers)
-    expr: CUSTOMER_SEGMENT = 'CHAMPION'
-    
-  - name: new_customers
-    description: New customers
-    expr: CUSTOMER_SEGMENT = 'NEW'

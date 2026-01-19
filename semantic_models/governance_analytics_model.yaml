@@ -4,6 +4,7 @@
 # This semantic model enables natural language queries on contract health,
 # data governance, SLA compliance, and trust metrics through Cortex Analyst.
 # Provides observability into the data contracts system itself.
+# Version: 1.0.0 | Owner: demo-team@company.com
 # ============================================================================
 
 name: governance_analytics
@@ -12,19 +13,6 @@ description: |
   Enables natural language queries on contract health, SLA compliance,
   quality scores, tag coverage, and data lineage. Essential for understanding
   the trustworthiness of your data products.
-
-version: 1.0.0
-owner: demo-team@company.com
-
-# ─────────────────────────────────────────────────────────────────────────────
-# DATABASE CONFIGURATION
-# ─────────────────────────────────────────────────────────────────────────────
-database: GOVERNANCE
-schema: OBSERVABILITY
-
-# ─────────────────────────────────────────────────────────────────────────────
-# TABLES
-# ─────────────────────────────────────────────────────────────────────────────
 tables:
   # ─────────────────────────────────────────────────────────────────────────
   # Contract Health Dashboard
@@ -331,71 +319,78 @@ tables:
         default_aggregation: sum
 
 # ─────────────────────────────────────────────────────────────────────────────
-# SAMPLE QUESTIONS FOR TRAINING
+# VERIFIED QUERIES
 # ─────────────────────────────────────────────────────────────────────────────
-sample_questions:
-  # Contract Health
-  - question: "What is the overall health of our data contracts?"
+verifiedQueries:
+  - name: overall_contract_health
+    question: What is the overall health of our data contracts?
     sql: |
       SELECT OVERALL_HEALTH, COUNT(*) as contract_count, AVG(QUALITY_SCORE) as avg_quality
       FROM GOVERNANCE.OBSERVABILITY.VW_CONTRACT_HEALTH_DASHBOARD
       GROUP BY OVERALL_HEALTH
       ORDER BY contract_count DESC
       
-  - question: "Which contracts have critical health issues?"
+  - name: critical_contracts
+    question: Which contracts have critical health issues?
     sql: |
       SELECT CONTRACT_ID, QUALITY_SCORE, FRESHNESS_STATUS, CONSUMER_COUNT
       FROM GOVERNANCE.OBSERVABILITY.VW_CONTRACT_HEALTH_DASHBOARD
       WHERE OVERALL_HEALTH = 'CRITICAL'
       ORDER BY CONSUMER_COUNT DESC
       
-  - question: "How many contracts are currently active?"
+  - name: active_contract_count
+    question: How many contracts are currently active?
     sql: |
       SELECT COUNT(*) as active_contracts
       FROM GOVERNANCE.OBSERVABILITY.VW_CONTRACT_HEALTH_DASHBOARD
       WHERE CONTRACT_STATUS = 'active'
       
-  - question: "What is our average quality score across all contracts?"
+  - name: avg_quality_score
+    question: What is our average quality score across all contracts?
     sql: |
       SELECT AVG(QUALITY_SCORE) as avg_quality_score
       FROM GOVERNANCE.OBSERVABILITY.VW_CONTRACT_HEALTH_DASHBOARD
       
-  # SLA Compliance
-  - question: "Which contracts are violating SLA thresholds?"
+  - name: sla_violations
+    question: Which contracts are violating SLA thresholds?
     sql: |
       SELECT CONTRACT_ID, FRESHNESS_STATUS, QUALITY_SCORE, OVERALL_HEALTH
       FROM GOVERNANCE.OBSERVABILITY.VW_CONTRACT_HEALTH_DASHBOARD
       WHERE FRESHNESS_STATUS = 'LATE' OR OVERALL_HEALTH = 'CRITICAL'
       
-  - question: "What is our overall SLA compliance rate?"
+  - name: overall_sla_compliance
+    question: What is our overall SLA compliance rate?
     sql: |
       SELECT AVG(COMPLIANCE_PCT) as overall_compliance
       FROM GOVERNANCE.OBSERVABILITY.VW_SLA_COMPLIANCE_TREND
       WHERE METRIC_DATE >= DATEADD(day, -7, CURRENT_DATE())
       
-  - question: "Show me freshness SLA violations"
+  - name: freshness_violations
+    question: Show me freshness SLA violations
     sql: |
       SELECT CONTRACT_ID, ALERT_MESSAGE, CREATED_AT
       FROM GOVERNANCE.OBSERVABILITY.VW_ACTIVE_ALERTS
       WHERE ALERT_TYPE = 'FRESHNESS'
       ORDER BY CREATED_AT DESC
       
-  # Alerts
-  - question: "What alerts are currently active?"
+  - name: active_alerts
+    question: What alerts are currently active?
     sql: |
       SELECT ALERT_TYPE, ALERT_SEVERITY, COUNT(*) as alert_count
       FROM GOVERNANCE.OBSERVABILITY.VW_ACTIVE_ALERTS
       GROUP BY ALERT_TYPE, ALERT_SEVERITY
       ORDER BY alert_count DESC
       
-  - question: "Show me critical alerts"
+  - name: critical_alerts
+    question: Show me critical alerts
     sql: |
       SELECT CONTRACT_ID, ALERT_TYPE, ALERT_MESSAGE, CREATED_AT
       FROM GOVERNANCE.OBSERVABILITY.VW_ACTIVE_ALERTS
       WHERE ALERT_SEVERITY = 'CRITICAL'
       ORDER BY CREATED_AT DESC
       
-  - question: "Which contracts have the most alerts?"
+  - name: contracts_with_most_alerts
+    question: Which contracts have the most alerts?
     sql: |
       SELECT CONTRACT_ID, COUNT(*) as alert_count
       FROM GOVERNANCE.OBSERVABILITY.VW_ACTIVE_ALERTS
@@ -403,64 +398,39 @@ sample_questions:
       ORDER BY alert_count DESC
       LIMIT 10
       
-  # Tag Coverage
-  - question: "What percentage of columns have governance tags?"
+  - name: tag_coverage_percent
+    question: What percentage of columns have governance tags?
     sql: |
       SELECT SUM(TAGGED_COLUMNS) * 100.0 / SUM(TOTAL_COLUMNS) as overall_tag_coverage
       FROM GOVERNANCE.OBSERVABILITY.VW_TAG_COVERAGE
       
-  - question: "Which contracts have incomplete tag coverage?"
+  - name: incomplete_tag_coverage
+    question: Which contracts have incomplete tag coverage?
     sql: |
       SELECT CONTRACT_ID, TOTAL_COLUMNS, TAGGED_COLUMNS, TAG_COVERAGE_PCT
       FROM GOVERNANCE.OBSERVABILITY.VW_TAG_COVERAGE
       WHERE TAG_COVERAGE_PCT < 100
       ORDER BY TAG_COVERAGE_PCT ASC
       
-  - question: "Show me tag coverage by contract"
+  - name: tag_coverage_by_contract
+    question: Show me tag coverage by contract
     sql: |
       SELECT CONTRACT_ID, TOTAL_COLUMNS, TAGGED_COLUMNS, TAG_COVERAGE_PCT
       FROM GOVERNANCE.OBSERVABILITY.VW_TAG_COVERAGE
       ORDER BY TAG_COVERAGE_PCT DESC
       
-  # Consumer Dependencies
-  - question: "Which contracts have the most consumers?"
+  - name: most_consumers
+    question: Which contracts have the most consumers?
     sql: |
       SELECT CONTRACT_ID, CONSUMER_COUNT, OVERALL_HEALTH, QUALITY_SCORE
       FROM GOVERNANCE.OBSERVABILITY.VW_CONTRACT_HEALTH_DASHBOARD
       ORDER BY CONSUMER_COUNT DESC
       LIMIT 10
       
-  - question: "How many consumers depend on each contract?"
+  - name: consumer_dependencies
+    question: How many consumers depend on each contract?
     sql: |
       SELECT CONTRACT_ID, CONSUMER_COUNT
       FROM GOVERNANCE.OBSERVABILITY.VW_CONTRACT_HEALTH_DASHBOARD
       WHERE CONSUMER_COUNT > 0
       ORDER BY CONSUMER_COUNT DESC
-
-# ─────────────────────────────────────────────────────────────────────────────
-# FILTERS
-# ─────────────────────────────────────────────────────────────────────────────
-filters:
-  - name: healthy_contracts
-    description: Only healthy contracts
-    expr: OVERALL_HEALTH = 'HEALTHY'
-    
-  - name: critical_contracts
-    description: Contracts with critical issues
-    expr: OVERALL_HEALTH = 'CRITICAL'
-    
-  - name: active_contracts
-    description: Currently active contracts
-    expr: CONTRACT_STATUS = 'active'
-    
-  - name: high_impact
-    description: Contracts with many consumers
-    expr: CONSUMER_COUNT >= 3
-    
-  - name: low_quality
-    description: Contracts with quality issues
-    expr: QUALITY_SCORE < 80
-    
-  - name: full_coverage
-    description: Contracts with 100% tag coverage
-    expr: TAG_COVERAGE_PCT = 100

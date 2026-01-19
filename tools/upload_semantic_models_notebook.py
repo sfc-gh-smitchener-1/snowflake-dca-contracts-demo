@@ -33,7 +33,8 @@ print()
 
 sales_model = """
 name: sales_analytics
-description: Sales analytics semantic model for Cortex Analyst
+description: Sales analytics semantic model for Cortex Analyst. Enables natural language queries on orders, products, customers, and suppliers.
+
 tables:
   - name: VW_SALES_ANALYTICS
     description: Core sales analytics view with order line items and full dimensional context
@@ -43,103 +44,69 @@ tables:
       table: VW_SALES_ANALYTICS
     
     dimensions:
-      - name: ORDER_DATE
+      - name: order_date
         description: Date the order was placed
         expr: ORDER_DATE
         data_type: DATE
         
-      - name: YEAR
+      - name: year
         description: Year of the order
         expr: YEAR
         data_type: NUMBER
         
-      - name: QUARTER
-        description: Quarter of the order (Q1-Q4)
-        expr: QUARTER
-        data_type: VARCHAR
-        
-      - name: MONTH_NAME
-        description: Month name of the order
-        expr: MONTH_NAME
-        data_type: VARCHAR
-        
-      - name: REGION_NAME
+      - name: region
+        synonyms:
+          - region_name
+          - geographic region
         description: Geographic region
         expr: REGION_NAME
         data_type: VARCHAR
         
-      - name: NATION_NAME
-        description: Country name
-        expr: NATION_NAME
-        data_type: VARCHAR
-        
-      - name: MARKET_SEGMENT
+      - name: market_segment
+        synonyms:
+          - segment
         description: Customer market segment
         expr: MARKET_SEGMENT
         data_type: VARCHAR
         
-      - name: ORDER_PRIORITY
-        description: Order priority level
-        expr: ORDER_PRIORITY
-        data_type: VARCHAR
-        
-      - name: SHIP_MODE
-        description: Shipping mode
-        expr: SHIP_MODE
-        data_type: VARCHAR
-        
-      - name: PART_NAME
-        description: Product name
-        expr: PART_NAME
-        data_type: VARCHAR
-        
-      - name: PART_TYPE
-        description: Product type
-        expr: PART_TYPE
-        data_type: VARCHAR
-        
-      - name: BRAND
-        description: Product brand
-        expr: BRAND
-        data_type: VARCHAR
-        
     measures:
-      - name: TOTAL_REVENUE
+      - name: total_revenue
+        synonyms:
+          - revenue
+          - sales
         description: Total gross revenue
-        expr: SUM(EXTENDED_PRICE)
+        expr: SUM(GROSS_REVENUE)
         data_type: NUMBER
         
-      - name: NET_REVENUE
+      - name: net_revenue
         description: Revenue after discounts
         expr: SUM(NET_REVENUE)
         data_type: NUMBER
         
-      - name: TOTAL_ORDERS
+      - name: order_count
+        synonyms:
+          - orders
+          - number of orders
         description: Count of distinct orders
         expr: COUNT(DISTINCT ORDER_KEY)
         data_type: NUMBER
-        
-      - name: TOTAL_ITEMS
-        description: Count of line items
-        expr: COUNT(*)
-        data_type: NUMBER
-        
-      - name: AVG_DISCOUNT
-        description: Average discount percentage
-        expr: AVG(DISCOUNT_PERCENT)
-        data_type: NUMBER
-        
-      - name: TOTAL_TAX
-        description: Total tax collected
-        expr: SUM(TAX_AMOUNT)
-        data_type: NUMBER
 
-    sample_questions:
-      - What were the top 10 countries by revenue last year?
-      - Show me monthly revenue trends for 2024
-      - Which market segments have the highest average order value?
-      - What is the revenue breakdown by region?
-      - Which products have the highest profit margins?
+verifiedQueries:
+  - name: revenue_by_region
+    question: Show me revenue by region
+    sql: |
+      SELECT REGION_NAME, SUM(NET_REVENUE) as revenue
+      FROM SEM_DEV.SEM_SALES.VW_SALES_ANALYTICS
+      GROUP BY REGION_NAME
+      ORDER BY revenue DESC
+      
+  - name: revenue_by_segment
+    question: Which market segment has the highest sales?
+    sql: |
+      SELECT MARKET_SEGMENT, SUM(GROSS_REVENUE) as total_sales
+      FROM SEM_DEV.SEM_SALES.VW_SALES_ANALYTICS
+      GROUP BY MARKET_SEGMENT
+      ORDER BY total_sales DESC
 """
 
 # Write to stage using a temporary file approach via SQL

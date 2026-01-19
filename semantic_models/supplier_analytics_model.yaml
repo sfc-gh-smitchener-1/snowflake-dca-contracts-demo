@@ -4,6 +4,7 @@
 # This semantic model enables natural language queries on supplier performance,
 # quality metrics, and delivery analytics through Cortex Analyst.
 # Designed for procurement AI and vendor management use cases.
+# Version: 1.0.0 | Owner: demo-team@company.com
 # ============================================================================
 
 name: supplier_analytics
@@ -11,19 +12,6 @@ description: |
   Supplier analytics semantic model for procurement AI and vendor management.
   Includes performance scores, quality metrics, delivery analytics, and inventory.
   No PII present - safe for all AI/ML workloads.
-
-version: 1.0.0
-owner: demo-team@company.com
-
-# ─────────────────────────────────────────────────────────────────────────────
-# DATABASE CONFIGURATION
-# ─────────────────────────────────────────────────────────────────────────────
-database: SEM_DEV
-schema: SEM_SALES
-
-# ─────────────────────────────────────────────────────────────────────────────
-# TABLES
-# ─────────────────────────────────────────────────────────────────────────────
 tables:
   - name: VW_SUPPLIER_ANALYTICS
     description: Supplier performance and quality analytics view
@@ -239,8 +227,9 @@ tables:
 # ─────────────────────────────────────────────────────────────────────────────
 # SAMPLE QUESTIONS FOR TRAINING
 # ─────────────────────────────────────────────────────────────────────────────
-sample_questions:
-  - question: "Which suppliers have the best on-time delivery rate?"
+verifiedQueries:
+  - name: best_on_time_delivery
+    question: Which suppliers have the best on-time delivery rate?
     sql: |
       SELECT SUPPLIER_NAME, 
              SUPPLIER_CATEGORY,
@@ -252,14 +241,16 @@ sample_questions:
       ORDER BY LATE_DELIVERY_RATE_PCT ASC
       LIMIT 10
       
-  - question: "Show me preferred suppliers"
+  - name: preferred_suppliers
+    question: Show me preferred suppliers
     sql: |
       SELECT SUPPLIER_NAME, REGION_NAME, NET_REVENUE, SUPPLIER_SCORE, RETURN_RATE_PCT, LATE_DELIVERY_RATE_PCT
       FROM SEM_DEV.SEM_SALES.VW_SUPPLIER_ANALYTICS
       WHERE SUPPLIER_CATEGORY = 'PREFERRED'
       ORDER BY NET_REVENUE DESC
       
-  - question: "What is revenue by supplier region?"
+  - name: revenue_by_supplier_region
+    question: What is revenue by supplier region?
     sql: |
       SELECT REGION_NAME,
              COUNT(DISTINCT SUPPLIER_KEY) as suppliers,
@@ -269,7 +260,8 @@ sample_questions:
       GROUP BY REGION_NAME
       ORDER BY total_revenue DESC
       
-  - question: "Which suppliers have the highest return rates?"
+  - name: highest_return_rates
+    question: Which suppliers have the highest return rates?
     sql: |
       SELECT SUPPLIER_NAME, 
              SUPPLIER_CATEGORY,
@@ -281,7 +273,8 @@ sample_questions:
       ORDER BY RETURN_RATE_PCT DESC
       LIMIT 10
       
-  - question: "Show me supplier performance scores by category"
+  - name: performance_by_category
+    question: Show me supplier performance scores by category
     sql: |
       SELECT SUPPLIER_CATEGORY,
              COUNT(DISTINCT SUPPLIER_KEY) as suppliers,
@@ -291,36 +284,9 @@ sample_questions:
       GROUP BY SUPPLIER_CATEGORY
       ORDER BY avg_score DESC
       
-  - question: "How many inactive suppliers do we have?"
+  - name: inactive_supplier_count
+    question: How many inactive suppliers do we have?
     sql: |
       SELECT COUNT(*) as inactive_suppliers
       FROM SEM_DEV.SEM_SALES.VW_SUPPLIER_ANALYTICS
       WHERE SUPPLIER_CATEGORY = 'INACTIVE'
-
-# ─────────────────────────────────────────────────────────────────────────────
-# FILTERS (Common WHERE clauses)
-# ─────────────────────────────────────────────────────────────────────────────
-filters:
-  - name: active_suppliers
-    description: Only active suppliers (not inactive)
-    expr: SUPPLIER_CATEGORY != 'INACTIVE'
-    
-  - name: preferred_suppliers
-    description: Preferred tier suppliers
-    expr: SUPPLIER_CATEGORY = 'PREFERRED'
-    
-  - name: strategic_suppliers
-    description: Strategic tier suppliers
-    expr: SUPPLIER_CATEGORY = 'STRATEGIC'
-    
-  - name: high_performers
-    description: Suppliers with score above 70
-    expr: SUPPLIER_SCORE >= 70
-    
-  - name: quality_issues
-    description: Suppliers with return rate above 5%
-    expr: RETURN_RATE_PCT > 5
-    
-  - name: delivery_issues
-    description: Suppliers with late delivery rate above 10%
-    expr: LATE_DELIVERY_RATE_PCT > 10

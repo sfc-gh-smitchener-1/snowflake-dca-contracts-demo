@@ -3,6 +3,7 @@
 # ============================================================================
 # This semantic model enables natural language queries on sales data
 # through Snowflake Cortex Analyst and Snowflake Intelligence
+# Version: 1.0.0 | Owner: demo-team@company.com
 # ============================================================================
 
 name: sales_analytics
@@ -10,19 +11,6 @@ description: |
   Sales analytics semantic model for TPCH demo data.
   Enables natural language queries on orders, products, customers, and suppliers.
   All customer PII is pseudonymized for AI safety.
-
-version: 1.0.0
-owner: demo-team@company.com
-
-# ─────────────────────────────────────────────────────────────────────────────
-# DATABASE CONFIGURATION
-# ─────────────────────────────────────────────────────────────────────────────
-database: SEM_DEV
-schema: SEM_SALES
-
-# ─────────────────────────────────────────────────────────────────────────────
-# TABLES
-# ─────────────────────────────────────────────────────────────────────────────
 tables:
   - name: VW_SALES_ANALYTICS
     description: Core sales analytics view with order line item details
@@ -343,23 +331,26 @@ tables:
         default_aggregation: avg
 
 # ─────────────────────────────────────────────────────────────────────────────
-# SAMPLE QUESTIONS FOR TRAINING
+# VERIFIED QUERIES (Sample questions with validated SQL)
 # ─────────────────────────────────────────────────────────────────────────────
-sample_questions:
-  - question: "What was total revenue last year?"
+verifiedQueries:
+  - name: total_revenue_last_year
+    question: What was total revenue last year?
     sql: |
       SELECT SUM(GROSS_REVENUE) as total_revenue
       FROM SEM_DEV.SEM_SALES.VW_SALES_ANALYTICS
       WHERE YEAR = YEAR(CURRENT_DATE()) - 1
       
-  - question: "Show me revenue by region"
+  - name: revenue_by_region
+    question: Show me revenue by region
     sql: |
       SELECT REGION_NAME, SUM(NET_REVENUE) as revenue
       FROM SEM_DEV.SEM_SALES.VW_SALES_ANALYTICS
       GROUP BY REGION_NAME
       ORDER BY revenue DESC
       
-  - question: "Which market segment has the highest sales?"
+  - name: highest_sales_segment
+    question: Which market segment has the highest sales?
     sql: |
       SELECT MARKET_SEGMENT, SUM(GROSS_REVENUE) as total_sales
       FROM SEM_DEV.SEM_SALES.VW_SALES_ANALYTICS
@@ -367,7 +358,8 @@ sample_questions:
       ORDER BY total_sales DESC
       LIMIT 1
       
-  - question: "What is our return rate by product type?"
+  - name: return_rate_by_product
+    question: What is our return rate by product type?
     sql: |
       SELECT PART_TYPE, 
              COUNT(*) as total_items,
@@ -377,40 +369,10 @@ sample_questions:
       GROUP BY PART_TYPE
       ORDER BY return_rate DESC
       
-  - question: "Show monthly revenue trend"
+  - name: monthly_revenue_trend
+    question: Show monthly revenue trend
     sql: |
       SELECT YEAR, MONTH, MONTH_NAME, SUM(NET_REVENUE) as revenue
       FROM SEM_DEV.SEM_SALES.VW_SALES_ANALYTICS
       GROUP BY YEAR, MONTH, MONTH_NAME
       ORDER BY YEAR, MONTH
-
-# ─────────────────────────────────────────────────────────────────────────────
-# FILTERS (Common WHERE clauses)
-# ─────────────────────────────────────────────────────────────────────────────
-filters:
-  - name: current_year
-    description: Filter to current year
-    expr: YEAR = YEAR(CURRENT_DATE())
-    
-  - name: last_year
-    description: Filter to previous year
-    expr: YEAR = YEAR(CURRENT_DATE()) - 1
-    
-  - name: fulfilled_orders
-    description: Only fulfilled orders
-    expr: ORDER_STATUS = 'FULFILLED'
-    
-  - name: premium_customers
-    description: Only premium tier customers
-    expr: CUSTOMER_TIER = 'PREMIUM'
-
-# ─────────────────────────────────────────────────────────────────────────────
-# RELATIONSHIPS
-# ─────────────────────────────────────────────────────────────────────────────
-relationships:
-  - name: customer_orders
-    description: Customers to their orders
-    left_table: VW_CUSTOMER_ANALYTICS
-    right_table: VW_SALES_ANALYTICS
-    join_type: inner
-    join_condition: VW_CUSTOMER_ANALYTICS.CUSTOMER_ID = VW_SALES_ANALYTICS.CUSTOMER_ID
