@@ -35,253 +35,196 @@ CREATE SCHEMA IF NOT EXISTS SEM_DEV.SEM_PRODUCT
 -- for comprehensive sales analysis with Cortex Analyst.
 
 CREATE OR REPLACE SEMANTIC VIEW SEM_DEV.SEM_SALES.SALES_ANALYTICS
-
-  COMMENT = 'Sales analytics semantic view for Cortex Analyst. Combines orders, line items, customers, and products for comprehensive revenue analysis.'
-
   TABLES (
     -- Orders table
     orders AS CURATED_DEV.CURATED_FACTS.FACT_ORDERS
       PRIMARY KEY (ORDER_KEY)
-      WITH SYNONYMS = ('sales orders', 'customer orders', 'purchases')
-      COMMENT = 'Order header information including status and priority',
+      WITH SYNONYMS = ('sales orders', 'customer orders', 'purchases'),
     
     -- Line items table  
     line_items AS CURATED_DEV.CURATED_FACTS.FACT_LINEITEM
       PRIMARY KEY (ORDER_KEY, LINE_NUMBER)
-      WITH SYNONYMS = ('order lines', 'order items', 'order details')
-      COMMENT = 'Individual line items within orders with pricing and delivery info',
+      WITH SYNONYMS = ('order lines', 'order items', 'order details'),
     
     -- Customers table
     customers AS CURATED_DEV.CURATED_DIMENSIONS.DIM_CUSTOMER
       PRIMARY KEY (CUSTOMER_KEY)
-      WITH SYNONYMS = ('buyers', 'accounts', 'clients')
-      COMMENT = 'Customer dimension with segmentation and tier information',
+      WITH SYNONYMS = ('buyers', 'accounts', 'clients'),
     
     -- Parts/Products table
     parts AS CURATED_DEV.CURATED_DIMENSIONS.DIM_PART
       PRIMARY KEY (PART_KEY)
-      WITH SYNONYMS = ('products', 'items', 'inventory')
-      COMMENT = 'Product catalog with pricing and categorization',
+      WITH SYNONYMS = ('products', 'items', 'inventory'),
     
     -- Suppliers table
     suppliers AS CURATED_DEV.CURATED_DIMENSIONS.DIM_SUPPLIER
       PRIMARY KEY (SUPPLIER_KEY)
-      WITH SYNONYMS = ('vendors', 'providers')
-      COMMENT = 'Supplier information with performance tiers',
+      WITH SYNONYMS = ('vendors', 'providers'),
     
     -- Geography table
     geography AS CURATED_DEV.CURATED_DIMENSIONS.DIM_GEOGRAPHY
       PRIMARY KEY (NATION_KEY)
-      WITH SYNONYMS = ('regions', 'locations', 'countries')
-      COMMENT = 'Geographic hierarchy for regional analysis',
+      WITH SYNONYMS = ('regions', 'locations', 'countries'),
     
     -- Date table
     dates AS CURATED_DEV.CURATED_DIMENSIONS.DIM_DATE
       PRIMARY KEY (DATE_KEY)
       WITH SYNONYMS = ('calendar', 'time periods')
-      COMMENT = 'Date dimension for time-based analysis'
   )
-
   RELATIONSHIPS (
     -- Orders to Customers
     orders_to_customers AS
-      orders (CUSTOMER_KEY) REFERENCES customers
-      COMMENT = 'Each order belongs to one customer',
+      orders (CUSTOMER_KEY) REFERENCES customers,
     
     -- Line Items to Orders
     line_items_to_orders AS
-      line_items (ORDER_KEY) REFERENCES orders
-      COMMENT = 'Each line item belongs to one order',
+      line_items (ORDER_KEY) REFERENCES orders,
     
     -- Line Items to Parts
     line_items_to_parts AS
-      line_items (PART_KEY) REFERENCES parts
-      COMMENT = 'Each line item references one product',
+      line_items (PART_KEY) REFERENCES parts,
     
     -- Line Items to Suppliers
     line_items_to_suppliers AS
-      line_items (SUPPLIER_KEY) REFERENCES suppliers
-      COMMENT = 'Each line item is fulfilled by one supplier',
+      line_items (SUPPLIER_KEY) REFERENCES suppliers,
     
     -- Customers to Geography
     customers_to_geography AS
-      customers (NATION_KEY) REFERENCES geography
-      COMMENT = 'Each customer belongs to one nation/region',
+      customers (NATION_KEY) REFERENCES geography,
     
     -- Orders to Dates
     orders_to_dates AS
       orders (ORDER_DATE_KEY) REFERENCES dates
-      COMMENT = 'Each order has an order date'
   )
-
   FACTS (
     -- Revenue facts
     line_items.revenue AS EXTENDED_PRICE
-      WITH SYNONYMS = ('sales', 'gross revenue', 'total price')
-      COMMENT = 'Extended price before discounts',
+      WITH SYNONYMS = ('sales', 'gross revenue', 'total price'),
     
     line_items.net_revenue AS DISCOUNTED_PRICE
-      WITH SYNONYMS = ('net sales', 'discounted revenue')
-      COMMENT = 'Price after discount applied',
+      WITH SYNONYMS = ('net sales', 'discounted revenue'),
     
     line_items.discount_amount AS DISCOUNT_AMOUNT
-      WITH SYNONYMS = ('discount value', 'savings')
-      COMMENT = 'Dollar amount of discount',
+      WITH SYNONYMS = ('discount value', 'savings'),
     
-    line_items.tax_amount AS TAX_AMOUNT
-      COMMENT = 'Tax amount on line item',
+    line_items.tax_amount AS TAX_AMOUNT,
     
     -- Quantity facts
     line_items.quantity AS QUANTITY
-      WITH SYNONYMS = ('units', 'items sold', 'volume')
-      COMMENT = 'Quantity ordered',
+      WITH SYNONYMS = ('units', 'items sold', 'volume'),
     
     -- Delivery facts
     line_items.delivery_days AS DELIVERY_DAYS
-      WITH SYNONYMS = ('lead time', 'shipping time', 'transit days')
-      COMMENT = 'Days between order and delivery',
+      WITH SYNONYMS = ('lead time', 'shipping time', 'transit days'),
     
     -- Order value
     orders.order_total AS TOTAL_PRICE
       WITH SYNONYMS = ('order value', 'order amount')
-      COMMENT = 'Total order value'
   )
-
   DIMENSIONS (
     -- Time dimensions
     dates.year AS YEAR
-      WITH SYNONYMS = ('fiscal year', 'calendar year')
-      COMMENT = 'Year of the order',
+      WITH SYNONYMS = ('fiscal year', 'calendar year'),
     
     dates.quarter AS QUARTER
-      WITH SYNONYMS = ('fiscal quarter', 'Q1/Q2/Q3/Q4')
-      COMMENT = 'Quarter of the order (1-4)',
+      WITH SYNONYMS = ('fiscal quarter', 'Q1/Q2/Q3/Q4'),
     
-    dates.month AS MONTH
-      COMMENT = 'Month number (1-12)',
+    dates.month AS MONTH,
     
-    dates.month_name AS MONTH_NAME
-      COMMENT = 'Month name (January, February, etc.)',
+    dates.month_name AS MONTH_NAME,
     
     dates.full_date AS ORDER_DATE
-      WITH SYNONYMS = ('sale date', 'purchase date', 'transaction date')
-      COMMENT = 'Date when the order was placed',
+      WITH SYNONYMS = ('sale date', 'purchase date', 'transaction date'),
     
     -- Geographic dimensions
     geography.region_name AS REGION
-      WITH SYNONYMS = ('area', 'territory', 'zone')
-      COMMENT = 'Geographic region (AMERICA, EUROPE, ASIA, etc.)',
+      WITH SYNONYMS = ('area', 'territory', 'zone'),
     
     geography.nation_name AS NATION
-      WITH SYNONYMS = ('country')
-      COMMENT = 'Country name',
+      WITH SYNONYMS = ('country'),
     
     -- Customer dimensions
     customers.market_segment AS MARKET_SEGMENT
-      WITH SYNONYMS = ('segment', 'customer type', 'industry')
-      COMMENT = 'Customer market segment (AUTOMOBILE, BUILDING, etc.)',
+      WITH SYNONYMS = ('segment', 'customer type', 'industry'),
     
     customers.customer_tier AS CUSTOMER_TIER
-      WITH SYNONYMS = ('tier', 'customer level', 'account tier')
-      COMMENT = 'Customer tier based on balance (PREMIUM, STANDARD, etc.)',
+      WITH SYNONYMS = ('tier', 'customer level', 'account tier'),
     
     -- Product dimensions
     parts.part_name AS PRODUCT_NAME
-      WITH SYNONYMS = ('item name', 'product')
-      COMMENT = 'Product name',
+      WITH SYNONYMS = ('item name', 'product'),
     
     parts.brand AS BRAND
-      WITH SYNONYMS = ('manufacturer brand')
-      COMMENT = 'Product brand',
+      WITH SYNONYMS = ('manufacturer brand'),
     
     parts.part_type AS PRODUCT_TYPE
-      WITH SYNONYMS = ('type', 'category')
-      COMMENT = 'Product type/category',
+      WITH SYNONYMS = ('type', 'category'),
     
-    parts.price_tier AS PRICE_TIER
-      COMMENT = 'Product price tier (BUDGET, MID, PREMIUM, LUXURY)',
+    parts.price_tier AS PRICE_TIER,
     
     -- Supplier dimensions
     suppliers.supplier_name AS SUPPLIER
-      WITH SYNONYMS = ('vendor', 'provider')
-      COMMENT = 'Supplier name',
+      WITH SYNONYMS = ('vendor', 'provider'),
     
-    suppliers.supplier_tier AS SUPPLIER_TIER
-      COMMENT = 'Supplier performance tier',
+    suppliers.supplier_tier AS SUPPLIER_TIER,
     
     -- Order dimensions
     orders.order_status_desc AS ORDER_STATUS
-      WITH SYNONYMS = ('status')
-      COMMENT = 'Order fulfillment status',
+      WITH SYNONYMS = ('status'),
     
     orders.order_priority AS ORDER_PRIORITY
-      WITH SYNONYMS = ('priority', 'urgency')
-      COMMENT = 'Order priority level',
+      WITH SYNONYMS = ('priority', 'urgency'),
     
     -- Line item dimensions
     line_items.ship_mode AS SHIP_MODE
-      WITH SYNONYMS = ('shipping method', 'delivery method')
-      COMMENT = 'Shipping mode (AIR, TRUCK, SHIP, etc.)',
+      WITH SYNONYMS = ('shipping method', 'delivery method'),
     
-    line_items.return_status AS RETURN_STATUS
-      COMMENT = 'Return flag (R=Returned, A=Accepted, N=None)',
+    line_items.return_status AS RETURN_STATUS,
     
     line_items.delivery_status AS DELIVERY_STATUS
       WITH SYNONYMS = ('on time', 'late')
-      COMMENT = 'Delivery status (ON_TIME, LATE, EARLY)'
   )
-
   METRICS (
     -- Revenue metrics
-    orders.total_revenue AS SUM(line_items.revenue)
-      WITH SYNONYMS = ('gross sales', 'total sales', 'revenue')
-      COMMENT = 'Total gross revenue across all orders',
+    total_revenue AS SUM(line_items.revenue)
+      WITH SYNONYMS = ('gross sales', 'total sales', 'revenue'),
     
-    orders.total_net_revenue AS SUM(line_items.net_revenue)
-      WITH SYNONYMS = ('net sales')
-      COMMENT = 'Total revenue after discounts',
+    total_net_revenue AS SUM(line_items.net_revenue)
+      WITH SYNONYMS = ('net sales'),
     
-    orders.total_discounts AS SUM(line_items.discount_amount)
-      COMMENT = 'Total discount amount given',
+    total_discounts AS SUM(line_items.discount_amount),
     
     -- Order metrics
-    orders.order_count AS COUNT(DISTINCT orders.ORDER_KEY)
-      WITH SYNONYMS = ('number of orders', 'order volume')
-      COMMENT = 'Count of unique orders',
+    order_count AS COUNT(DISTINCT orders.ORDER_KEY)
+      WITH SYNONYMS = ('number of orders', 'order volume'),
     
-    orders.average_order_value AS AVG(orders.order_total)
-      WITH SYNONYMS = ('AOV', 'avg order', 'average sale')
-      COMMENT = 'Average value per order',
+    average_order_value AS AVG(orders.order_total)
+      WITH SYNONYMS = ('AOV', 'avg order', 'average sale'),
     
     -- Customer metrics
-    customers.customer_count AS COUNT(DISTINCT customers.CUSTOMER_KEY)
-      WITH SYNONYMS = ('number of customers', 'unique customers')
-      COMMENT = 'Count of unique customers',
+    customer_count AS COUNT(DISTINCT customers.CUSTOMER_KEY)
+      WITH SYNONYMS = ('number of customers', 'unique customers'),
     
     -- Quantity metrics
-    line_items.total_quantity AS SUM(line_items.quantity)
-      WITH SYNONYMS = ('units sold', 'total units', 'volume')
-      COMMENT = 'Total quantity of items sold',
+    total_quantity AS SUM(line_items.quantity)
+      WITH SYNONYMS = ('units sold', 'total units', 'volume'),
     
-    line_items.average_quantity AS AVG(line_items.quantity)
-      COMMENT = 'Average quantity per line item',
+    average_quantity AS AVG(line_items.quantity),
     
     -- Delivery metrics
-    line_items.average_delivery_days AS AVG(line_items.delivery_days)
-      WITH SYNONYMS = ('avg lead time', 'average shipping time')
-      COMMENT = 'Average days to deliver',
+    average_delivery_days AS AVG(line_items.delivery_days)
+      WITH SYNONYMS = ('avg lead time', 'average shipping time'),
     
-    line_items.on_time_delivery_rate AS 
+    on_time_delivery_rate AS 
       (COUNT_IF(line_items.DELIVERY_STATUS = 'ON_TIME') * 100.0 / NULLIF(COUNT(*), 0))
-      WITH SYNONYMS = ('OTD rate', 'delivery performance')
-      COMMENT = 'Percentage of orders delivered on time',
+      WITH SYNONYMS = ('OTD rate', 'delivery performance'),
     
     -- Return metrics
-    line_items.return_rate AS 
+    return_rate AS 
       (COUNT_IF(line_items.RETURN_FLAG = 'R') * 100.0 / NULLIF(COUNT(*), 0))
       WITH SYNONYMS = ('return percentage')
-      COMMENT = 'Percentage of items returned'
-  );
+  )
+  COMMENT = 'Sales analytics semantic view for Cortex Analyst. Combines orders, line items, customers, and products for comprehensive revenue analysis.';
 
 -- Apply governance tags
 ALTER SEMANTIC VIEW SEM_DEV.SEM_SALES.SALES_ANALYTICS
@@ -300,138 +243,105 @@ GRANT SELECT, REFERENCES ON SEMANTIC VIEW SEM_DEV.SEM_SALES.SALES_ANALYTICS TO R
 -- Customer-centric view with RFM scoring and segmentation for churn analysis.
 
 CREATE OR REPLACE SEMANTIC VIEW SEM_DEV.SEM_CUSTOMER.CUSTOMER_ANALYTICS
-
-  COMMENT = 'Customer analytics semantic view with RFM scoring, segmentation, and lifetime value analysis. Ideal for churn prediction and customer health queries.'
-
   TABLES (
     -- Customers
     customers AS CURATED_DEV.CURATED_DIMENSIONS.DIM_CUSTOMER
       PRIMARY KEY (CUSTOMER_KEY)
-      WITH SYNONYMS = ('accounts', 'buyers', 'clients')
-      COMMENT = 'Customer master data with segmentation',
+      WITH SYNONYMS = ('accounts', 'buyers', 'clients'),
     
     -- Customer order summary
     customer_orders AS CURATED_DEV.CURATED_FACTS.FACT_CUSTOMER_ORDERS_SUMMARY
       PRIMARY KEY (CUSTOMER_KEY)
-      WITH SYNONYMS = ('customer metrics', 'customer stats')
-      COMMENT = 'Aggregated order statistics per customer',
+      WITH SYNONYMS = ('customer metrics', 'customer stats'),
     
     -- Geography
     geography AS CURATED_DEV.CURATED_DIMENSIONS.DIM_GEOGRAPHY
       PRIMARY KEY (NATION_KEY)
-      COMMENT = 'Geographic information'
   )
-
   RELATIONSHIPS (
     customers_to_orders AS
-      customers (CUSTOMER_KEY) REFERENCES customer_orders
-      COMMENT = 'Each customer has aggregated order statistics',
+      customers (CUSTOMER_KEY) REFERENCES customer_orders,
     
     customers_to_geography AS
       customers (NATION_KEY) REFERENCES geography
-      COMMENT = 'Each customer belongs to a nation/region'
   )
-
   FACTS (
     -- Order facts
     customer_orders.total_orders AS TOTAL_ORDERS
-      WITH SYNONYMS = ('order count', 'purchase count')
-      COMMENT = 'Total number of orders placed',
+      WITH SYNONYMS = ('order count', 'purchase count'),
     
     customer_orders.total_revenue AS TOTAL_REVENUE
-      WITH SYNONYMS = ('lifetime value', 'LTV', 'customer value')
-      COMMENT = 'Total revenue from customer',
+      WITH SYNONYMS = ('lifetime value', 'LTV', 'customer value'),
     
     customer_orders.avg_order_value AS AVG_ORDER_VALUE
-      WITH SYNONYMS = ('AOV', 'average purchase')
-      COMMENT = 'Average value per order',
+      WITH SYNONYMS = ('AOV', 'average purchase'),
     
-    customer_orders.total_quantity AS TOTAL_QUANTITY
-      COMMENT = 'Total items purchased',
+    customer_orders.total_quantity AS TOTAL_QUANTITY,
     
     -- Time-based facts
     customer_orders.days_since_last_order AS DAYS_SINCE_LAST_ORDER
-      WITH SYNONYMS = ('recency', 'days inactive')
-      COMMENT = 'Days since most recent order',
+      WITH SYNONYMS = ('recency', 'days inactive'),
     
     customer_orders.customer_tenure_days AS TENURE_DAYS
       WITH SYNONYMS = ('customer age', 'days as customer')
-      COMMENT = 'Days since first order'
   )
-
   DIMENSIONS (
     -- Customer attributes
     customers.market_segment AS MARKET_SEGMENT
-      WITH SYNONYMS = ('segment', 'industry', 'vertical')
-      COMMENT = 'Customer market segment',
+      WITH SYNONYMS = ('segment', 'industry', 'vertical'),
     
     customers.customer_tier AS CUSTOMER_TIER
-      WITH SYNONYMS = ('tier', 'level', 'account tier')
-      COMMENT = 'Customer tier based on account balance',
+      WITH SYNONYMS = ('tier', 'level', 'account tier'),
     
-    customers.balance_status AS BALANCE_STATUS
-      COMMENT = 'Account balance status (POSITIVE, ZERO, NEGATIVE)',
+    customers.balance_status AS BALANCE_STATUS,
     
     -- Geographic
     geography.region_name AS REGION
-      WITH SYNONYMS = ('area', 'territory')
-      COMMENT = 'Geographic region',
+      WITH SYNONYMS = ('area', 'territory'),
     
     geography.nation_name AS NATION
-      WITH SYNONYMS = ('country')
-      COMMENT = 'Country name',
+      WITH SYNONYMS = ('country'),
     
     -- Activity status
     customer_orders.activity_status AS ACTIVITY_STATUS
-      WITH SYNONYMS = ('status', 'health', 'engagement')
-      COMMENT = 'Customer activity status (ACTIVE, AT_RISK, CHURNED, NEW)',
+      WITH SYNONYMS = ('status', 'health', 'engagement'),
     
     -- Dates
     customer_orders.first_order_date AS FIRST_ORDER_DATE
-      WITH SYNONYMS = ('acquisition date', 'signup date')
-      COMMENT = 'Date of first order',
+      WITH SYNONYMS = ('acquisition date', 'signup date'),
     
     customer_orders.last_order_date AS LAST_ORDER_DATE
       WITH SYNONYMS = ('most recent order', 'latest purchase')
-      COMMENT = 'Date of most recent order'
   )
-
   METRICS (
     -- Customer counts
-    customers.total_customers AS COUNT(DISTINCT customers.CUSTOMER_KEY)
-      WITH SYNONYMS = ('customer count', 'number of customers')
-      COMMENT = 'Total unique customers',
+    total_customers AS COUNT(DISTINCT customers.CUSTOMER_KEY)
+      WITH SYNONYMS = ('customer count', 'number of customers'),
     
-    customers.active_customers AS COUNT_IF(customer_orders.ACTIVITY_STATUS = 'ACTIVE')
-      WITH SYNONYMS = ('engaged customers')
-      COMMENT = 'Customers with recent activity',
+    active_customers AS COUNT_IF(customer_orders.ACTIVITY_STATUS = 'ACTIVE')
+      WITH SYNONYMS = ('engaged customers'),
     
-    customers.at_risk_customers AS COUNT_IF(customer_orders.ACTIVITY_STATUS = 'AT_RISK')
-      WITH SYNONYMS = ('churn risk', 'customers at risk')
-      COMMENT = 'Customers at risk of churning',
+    at_risk_customers AS COUNT_IF(customer_orders.ACTIVITY_STATUS = 'AT_RISK')
+      WITH SYNONYMS = ('churn risk', 'customers at risk'),
     
-    customers.churned_customers AS COUNT_IF(customer_orders.ACTIVITY_STATUS = 'CHURNED')
-      WITH SYNONYMS = ('lost customers', 'inactive customers')
-      COMMENT = 'Customers who have churned',
+    churned_customers AS COUNT_IF(customer_orders.ACTIVITY_STATUS = 'CHURNED')
+      WITH SYNONYMS = ('lost customers', 'inactive customers'),
     
     -- Value metrics
-    customers.average_lifetime_value AS AVG(customer_orders.total_revenue)
-      WITH SYNONYMS = ('avg LTV', 'average customer value')
-      COMMENT = 'Average lifetime value per customer',
+    average_lifetime_value AS AVG(customer_orders.total_revenue)
+      WITH SYNONYMS = ('avg LTV', 'average customer value'),
     
-    customers.total_lifetime_value AS SUM(customer_orders.total_revenue)
-      WITH SYNONYMS = ('total LTV', 'total customer value')
-      COMMENT = 'Sum of all customer lifetime values',
+    total_lifetime_value AS SUM(customer_orders.total_revenue)
+      WITH SYNONYMS = ('total LTV', 'total customer value'),
     
     -- Engagement metrics
-    customers.average_orders_per_customer AS AVG(customer_orders.total_orders)
-      WITH SYNONYMS = ('order frequency', 'avg orders')
-      COMMENT = 'Average number of orders per customer',
+    average_orders_per_customer AS AVG(customer_orders.total_orders)
+      WITH SYNONYMS = ('order frequency', 'avg orders'),
     
-    customers.average_recency AS AVG(customer_orders.days_since_last_order)
+    average_recency AS AVG(customer_orders.days_since_last_order)
       WITH SYNONYMS = ('avg days since order')
-      COMMENT = 'Average days since last order across customers'
-  );
+  )
+  COMMENT = 'Customer analytics semantic view with RFM scoring, segmentation, and lifetime value analysis. Ideal for churn prediction and customer health queries.';
 
 -- Apply governance tags
 ALTER SEMANTIC VIEW SEM_DEV.SEM_CUSTOMER.CUSTOMER_ANALYTICS
@@ -449,126 +359,95 @@ GRANT SELECT, REFERENCES ON SEMANTIC VIEW SEM_DEV.SEM_CUSTOMER.CUSTOMER_ANALYTIC
 -- Supplier performance view for procurement and vendor management.
 
 CREATE OR REPLACE SEMANTIC VIEW SEM_DEV.SEM_SALES.SUPPLIER_ANALYTICS
-
-  COMMENT = 'Supplier performance semantic view for procurement analytics. Tracks delivery performance, quality metrics, and supplier value.'
-
   TABLES (
     suppliers AS CURATED_DEV.CURATED_DIMENSIONS.DIM_SUPPLIER
       PRIMARY KEY (SUPPLIER_KEY)
-      WITH SYNONYMS = ('vendors', 'providers')
-      COMMENT = 'Supplier master data',
+      WITH SYNONYMS = ('vendors', 'providers'),
     
     line_items AS CURATED_DEV.CURATED_FACTS.FACT_LINEITEM
-      PRIMARY KEY (ORDER_KEY, LINE_NUMBER)
-      COMMENT = 'Order line items for supplier performance',
+      PRIMARY KEY (ORDER_KEY, LINE_NUMBER),
     
     partsupp AS CURATED_DEV.CURATED_FACTS.FACT_PARTSUPP
       PRIMARY KEY (PART_KEY, SUPPLIER_KEY)
-      COMMENT = 'Part-supplier relationships and inventory'
   )
-
   RELATIONSHIPS (
     line_items_to_suppliers AS
-      line_items (SUPPLIER_KEY) REFERENCES suppliers
-      COMMENT = 'Line items fulfilled by suppliers',
+      line_items (SUPPLIER_KEY) REFERENCES suppliers,
     
     partsupp_to_suppliers AS
       partsupp (SUPPLIER_KEY) REFERENCES suppliers
-      COMMENT = 'Parts supplied by each supplier'
   )
-
   FACTS (
     -- Sales facts
-    line_items.revenue AS EXTENDED_PRICE
-      COMMENT = 'Revenue from supplier items',
+    line_items.revenue AS EXTENDED_PRICE,
     
-    line_items.quantity AS QUANTITY
-      COMMENT = 'Quantity sold',
+    line_items.quantity AS QUANTITY,
     
     line_items.delivery_days AS DELIVERY_DAYS
-      WITH SYNONYMS = ('lead time', 'shipping days')
-      COMMENT = 'Days to deliver',
+      WITH SYNONYMS = ('lead time', 'shipping days'),
     
     -- Inventory facts
     partsupp.available_qty AS AVAILABLE_QUANTITY
-      WITH SYNONYMS = ('stock', 'inventory')
-      COMMENT = 'Available quantity in inventory',
+      WITH SYNONYMS = ('stock', 'inventory'),
     
     partsupp.supply_cost AS SUPPLY_COST
       WITH SYNONYMS = ('cost', 'unit cost')
-      COMMENT = 'Cost per unit from supplier'
   )
-
   DIMENSIONS (
     -- Supplier attributes
     suppliers.supplier_name AS SUPPLIER_NAME
-      WITH SYNONYMS = ('vendor name', 'provider')
-      COMMENT = 'Supplier name',
+      WITH SYNONYMS = ('vendor name', 'provider'),
     
     suppliers.supplier_tier AS SUPPLIER_TIER
-      WITH SYNONYMS = ('tier', 'ranking')
-      COMMENT = 'Supplier performance tier',
+      WITH SYNONYMS = ('tier', 'ranking'),
     
     suppliers.nation_name AS NATION
-      WITH SYNONYMS = ('country', 'location')
-      COMMENT = 'Supplier country',
+      WITH SYNONYMS = ('country', 'location'),
     
     suppliers.region_name AS REGION
-      WITH SYNONYMS = ('area', 'territory')
-      COMMENT = 'Supplier region',
+      WITH SYNONYMS = ('area', 'territory'),
     
     -- Delivery status
     line_items.delivery_status AS DELIVERY_STATUS
-      WITH SYNONYMS = ('on time status')
-      COMMENT = 'Delivery performance (ON_TIME, LATE, EARLY)',
+      WITH SYNONYMS = ('on time status'),
     
     line_items.return_status AS RETURN_STATUS
-      COMMENT = 'Return flag'
   )
-
   METRICS (
     -- Volume metrics
-    suppliers.order_count AS COUNT(DISTINCT line_items.ORDER_KEY)
-      WITH SYNONYMS = ('orders', 'order volume')
-      COMMENT = 'Number of orders with this supplier',
+    order_count AS COUNT(DISTINCT line_items.ORDER_KEY)
+      WITH SYNONYMS = ('orders', 'order volume'),
     
-    suppliers.total_revenue AS SUM(line_items.revenue)
-      WITH SYNONYMS = ('sales', 'revenue')
-      COMMENT = 'Total revenue from supplier',
+    total_revenue AS SUM(line_items.revenue)
+      WITH SYNONYMS = ('sales', 'revenue'),
     
-    suppliers.total_quantity AS SUM(line_items.quantity)
-      WITH SYNONYMS = ('units sold', 'volume')
-      COMMENT = 'Total units sold',
+    total_quantity AS SUM(line_items.quantity)
+      WITH SYNONYMS = ('units sold', 'volume'),
     
     -- Performance metrics
-    suppliers.average_delivery_days AS AVG(line_items.delivery_days)
-      WITH SYNONYMS = ('avg lead time', 'average shipping')
-      COMMENT = 'Average days to deliver',
+    average_delivery_days AS AVG(line_items.delivery_days)
+      WITH SYNONYMS = ('avg lead time', 'average shipping'),
     
-    suppliers.on_time_rate AS 
+    on_time_rate AS 
       (COUNT_IF(line_items.DELIVERY_STATUS = 'ON_TIME') * 100.0 / NULLIF(COUNT(*), 0))
-      WITH SYNONYMS = ('OTD', 'on time delivery rate')
-      COMMENT = 'Percentage delivered on time',
+      WITH SYNONYMS = ('OTD', 'on time delivery rate'),
     
-    suppliers.late_delivery_rate AS 
+    late_delivery_rate AS 
       (COUNT_IF(line_items.DELIVERY_STATUS = 'LATE') * 100.0 / NULLIF(COUNT(*), 0))
-      WITH SYNONYMS = ('late rate')
-      COMMENT = 'Percentage delivered late',
+      WITH SYNONYMS = ('late rate'),
     
-    suppliers.return_rate AS 
+    return_rate AS 
       (COUNT_IF(line_items.RETURN_FLAG = 'R') * 100.0 / NULLIF(COUNT(*), 0))
-      WITH SYNONYMS = ('return percentage', 'defect rate')
-      COMMENT = 'Percentage of items returned',
+      WITH SYNONYMS = ('return percentage', 'defect rate'),
     
     -- Inventory metrics
-    suppliers.parts_supplied AS COUNT(DISTINCT partsupp.PART_KEY)
-      WITH SYNONYMS = ('product count', 'SKUs')
-      COMMENT = 'Number of unique parts supplied',
+    parts_supplied AS COUNT(DISTINCT partsupp.PART_KEY)
+      WITH SYNONYMS = ('product count', 'SKUs'),
     
-    suppliers.total_inventory AS SUM(partsupp.available_qty)
+    total_inventory AS SUM(partsupp.available_qty)
       WITH SYNONYMS = ('stock level', 'inventory on hand')
-      COMMENT = 'Total inventory available'
-  );
+  )
+  COMMENT = 'Supplier performance semantic view for procurement analytics. Tracks delivery performance, quality metrics, and supplier value.';
 
 -- Apply governance tags
 ALTER SEMANTIC VIEW SEM_DEV.SEM_SALES.SUPPLIER_ANALYTICS
@@ -586,134 +465,101 @@ GRANT SELECT, REFERENCES ON SEMANTIC VIEW SEM_DEV.SEM_SALES.SUPPLIER_ANALYTICS T
 -- Product performance and inventory analysis.
 
 CREATE OR REPLACE SEMANTIC VIEW SEM_DEV.SEM_PRODUCT.PRODUCT_ANALYTICS
-
-  COMMENT = 'Product analytics semantic view for inventory management and product performance analysis. Tracks sales velocity, margins, and stock levels.'
-
   TABLES (
     parts AS CURATED_DEV.CURATED_DIMENSIONS.DIM_PART
       PRIMARY KEY (PART_KEY)
-      WITH SYNONYMS = ('products', 'items', 'SKUs')
-      COMMENT = 'Product catalog',
+      WITH SYNONYMS = ('products', 'items', 'SKUs'),
     
     line_items AS CURATED_DEV.CURATED_FACTS.FACT_LINEITEM
-      PRIMARY KEY (ORDER_KEY, LINE_NUMBER)
-      COMMENT = 'Sales transactions',
+      PRIMARY KEY (ORDER_KEY, LINE_NUMBER),
     
     partsupp AS CURATED_DEV.CURATED_FACTS.FACT_PARTSUPP
       PRIMARY KEY (PART_KEY, SUPPLIER_KEY)
-      COMMENT = 'Inventory and supply information'
   )
-
   RELATIONSHIPS (
     line_items_to_parts AS
-      line_items (PART_KEY) REFERENCES parts
-      COMMENT = 'Line items reference products',
+      line_items (PART_KEY) REFERENCES parts,
     
     partsupp_to_parts AS
       partsupp (PART_KEY) REFERENCES parts
-      COMMENT = 'Inventory records for products'
   )
-
   FACTS (
     -- Sales facts
     line_items.revenue AS EXTENDED_PRICE
-      WITH SYNONYMS = ('sales', 'gross revenue')
-      COMMENT = 'Revenue from product sales',
+      WITH SYNONYMS = ('sales', 'gross revenue'),
     
-    line_items.net_revenue AS DISCOUNTED_PRICE
-      COMMENT = 'Revenue after discounts',
+    line_items.net_revenue AS DISCOUNTED_PRICE,
     
     line_items.quantity AS QUANTITY
-      WITH SYNONYMS = ('units', 'volume')
-      COMMENT = 'Quantity sold',
+      WITH SYNONYMS = ('units', 'volume'),
     
     -- Pricing facts
     parts.retail_price AS RETAIL_PRICE
-      WITH SYNONYMS = ('price', 'list price')
-      COMMENT = 'Product retail price',
+      WITH SYNONYMS = ('price', 'list price'),
     
     partsupp.supply_cost AS SUPPLY_COST
-      WITH SYNONYMS = ('cost', 'unit cost')
-      COMMENT = 'Cost from supplier',
+      WITH SYNONYMS = ('cost', 'unit cost'),
     
     -- Inventory facts
     partsupp.available_qty AS AVAILABLE_QUANTITY
       WITH SYNONYMS = ('stock', 'inventory', 'on hand')
-      COMMENT = 'Available inventory quantity'
   )
-
   DIMENSIONS (
     -- Product attributes
     parts.part_name AS PRODUCT_NAME
-      WITH SYNONYMS = ('name', 'item name')
-      COMMENT = 'Product name',
+      WITH SYNONYMS = ('name', 'item name'),
     
-    parts.brand AS BRAND
-      COMMENT = 'Product brand',
+    parts.brand AS BRAND,
     
     parts.manufacturer AS MANUFACTURER
-      WITH SYNONYMS = ('maker')
-      COMMENT = 'Product manufacturer',
+      WITH SYNONYMS = ('maker'),
     
     parts.part_type AS PRODUCT_TYPE
-      WITH SYNONYMS = ('type', 'category')
-      COMMENT = 'Product type/category',
+      WITH SYNONYMS = ('type', 'category'),
     
-    parts.size_category AS SIZE
-      COMMENT = 'Product size category',
+    parts.size_category AS SIZE,
     
     parts.price_tier AS PRICE_TIER
-      WITH SYNONYMS = ('pricing tier')
-      COMMENT = 'Price tier (BUDGET, MID, PREMIUM, LUXURY)',
+      WITH SYNONYMS = ('pricing tier'),
     
     parts.container_type AS CONTAINER
-      WITH SYNONYMS = ('packaging')
-      COMMENT = 'Container/packaging type',
+      WITH SYNONYMS = ('packaging'),
     
     -- Return status
     line_items.return_status AS RETURN_STATUS
-      COMMENT = 'Return flag'
   )
-
   METRICS (
     -- Sales metrics
-    parts.total_revenue AS SUM(line_items.revenue)
-      WITH SYNONYMS = ('sales', 'gross sales')
-      COMMENT = 'Total revenue from product',
+    total_revenue AS SUM(line_items.revenue)
+      WITH SYNONYMS = ('sales', 'gross sales'),
     
-    parts.total_quantity_sold AS SUM(line_items.quantity)
-      WITH SYNONYMS = ('units sold', 'volume')
-      COMMENT = 'Total units sold',
+    total_quantity_sold AS SUM(line_items.quantity)
+      WITH SYNONYMS = ('units sold', 'volume'),
     
-    parts.order_count AS COUNT(DISTINCT line_items.ORDER_KEY)
-      WITH SYNONYMS = ('orders', 'transactions')
-      COMMENT = 'Number of orders containing product',
+    order_count AS COUNT(DISTINCT line_items.ORDER_KEY)
+      WITH SYNONYMS = ('orders', 'transactions'),
     
     -- Margin metrics
-    parts.gross_margin AS (AVG(parts.retail_price) - AVG(partsupp.supply_cost))
-      WITH SYNONYMS = ('margin', 'profit')
-      COMMENT = 'Average gross margin per unit',
+    gross_margin AS (AVG(parts.retail_price) - AVG(partsupp.supply_cost))
+      WITH SYNONYMS = ('margin', 'profit'),
     
-    parts.gross_margin_pct AS 
+    gross_margin_pct AS 
       ((AVG(parts.retail_price) - AVG(partsupp.supply_cost)) * 100.0 / NULLIF(AVG(parts.retail_price), 0))
-      WITH SYNONYMS = ('margin %', 'profit margin')
-      COMMENT = 'Gross margin percentage',
+      WITH SYNONYMS = ('margin %', 'profit margin'),
     
     -- Inventory metrics
-    parts.total_inventory AS SUM(partsupp.available_qty)
-      WITH SYNONYMS = ('stock', 'inventory on hand')
-      COMMENT = 'Total available inventory',
+    total_inventory AS SUM(partsupp.available_qty)
+      WITH SYNONYMS = ('stock', 'inventory on hand'),
     
-    parts.supplier_count AS COUNT(DISTINCT partsupp.SUPPLIER_KEY)
-      WITH SYNONYMS = ('vendors', 'sources')
-      COMMENT = 'Number of suppliers for product',
+    supplier_count AS COUNT(DISTINCT partsupp.SUPPLIER_KEY)
+      WITH SYNONYMS = ('vendors', 'sources'),
     
     -- Quality metrics
-    parts.return_rate AS 
+    return_rate AS 
       (COUNT_IF(line_items.RETURN_FLAG = 'R') * 100.0 / NULLIF(COUNT(*), 0))
       WITH SYNONYMS = ('return %', 'defect rate')
-      COMMENT = 'Percentage of items returned'
-  );
+  )
+  COMMENT = 'Product analytics semantic view for inventory management and product performance analysis. Tracks sales velocity, margins, and stock levels.';
 
 -- Apply governance tags
 ALTER SEMANTIC VIEW SEM_DEV.SEM_PRODUCT.PRODUCT_ANALYTICS
@@ -731,139 +577,103 @@ GRANT SELECT, REFERENCES ON SEMANTIC VIEW SEM_DEV.SEM_PRODUCT.PRODUCT_ANALYTICS 
 -- Contract health and governance observability.
 
 CREATE OR REPLACE SEMANTIC VIEW SEM_DEV.SEM_SALES.GOVERNANCE_ANALYTICS
-
-  COMMENT = 'Governance analytics semantic view for monitoring data contract health, SLA compliance, and data quality across the platform.'
-
   TABLES (
     contracts AS GOVERNANCE.CONTRACT_REGISTRY.CONTRACTS
       PRIMARY KEY (CONTRACT_ID)
-      WITH SYNONYMS = ('data contracts', 'agreements')
-      COMMENT = 'Registered data contracts',
+      WITH SYNONYMS = ('data contracts', 'agreements'),
     
     consumers AS GOVERNANCE.CONTRACT_REGISTRY.CONTRACT_CONSUMERS
-      PRIMARY KEY (CONSUMER_ID)
-      COMMENT = 'Contract consumers/subscribers',
+      PRIMARY KEY (CONSUMER_ID),
     
     quality_rules AS GOVERNANCE.CONTRACT_REGISTRY.QUALITY_RULES
-      PRIMARY KEY (RULE_ID)
-      COMMENT = 'Data quality rules',
+      PRIMARY KEY (RULE_ID),
     
     alerts AS GOVERNANCE.OBSERVABILITY.ALERTS
       PRIMARY KEY (ALERT_ID)
-      COMMENT = 'Active and historical alerts'
   )
-
   RELATIONSHIPS (
     consumers_to_contracts AS
-      consumers (CONTRACT_ID) REFERENCES contracts
-      COMMENT = 'Consumers subscribe to contracts',
+      consumers (CONTRACT_ID) REFERENCES contracts,
     
     quality_rules_to_contracts AS
-      quality_rules (CONTRACT_ID) REFERENCES contracts
-      COMMENT = 'Quality rules belong to contracts',
+      quality_rules (CONTRACT_ID) REFERENCES contracts,
     
     alerts_to_contracts AS
       alerts (CONTRACT_ID) REFERENCES contracts
-      COMMENT = 'Alerts are raised for contracts'
   )
-
   FACTS (
     -- Contract metadata (as numeric for counting)
-    contracts.version_number AS 1
-      COMMENT = 'Contract version indicator'
+    contracts.version_number AS VERSION_NUMBER
   )
-
   DIMENSIONS (
     -- Contract attributes
     contracts.contract_id AS CONTRACT_ID
-      WITH SYNONYMS = ('id', 'contract name')
-      COMMENT = 'Unique contract identifier',
+      WITH SYNONYMS = ('id', 'contract name'),
     
     contracts.contract_type AS CONTRACT_TYPE
-      WITH SYNONYMS = ('type')
-      COMMENT = 'Type of contract (data, product)',
+      WITH SYNONYMS = ('type'),
     
     contracts.status AS STATUS
-      WITH SYNONYMS = ('state', 'lifecycle')
-      COMMENT = 'Contract status (draft, active, deprecated)',
+      WITH SYNONYMS = ('state', 'lifecycle'),
     
     contracts.producer_system AS PRODUCER
-      WITH SYNONYMS = ('source', 'owner', 'publisher')
-      COMMENT = 'System that produces the data',
+      WITH SYNONYMS = ('source', 'owner', 'publisher'),
     
     -- Consumer attributes
     consumers.consumer_system AS CONSUMER
-      WITH SYNONYMS = ('subscriber', 'user')
-      COMMENT = 'System consuming the contract',
+      WITH SYNONYMS = ('subscriber', 'user'),
     
-    consumers.use_case AS USE_CASE
-      COMMENT = 'Business use case for consumption',
+    consumers.use_case AS USE_CASE,
     
     -- Quality rule attributes
-    quality_rules.rule_name AS RULE_NAME
-      COMMENT = 'Quality rule name',
+    quality_rules.rule_name AS RULE_NAME,
     
-    quality_rules.severity AS RULE_SEVERITY
-      COMMENT = 'Rule severity (error, warning, info)',
+    quality_rules.severity AS RULE_SEVERITY,
     
-    quality_rules.enabled AS RULE_ENABLED
-      COMMENT = 'Whether rule is active',
+    quality_rules.enabled AS RULE_ENABLED,
     
     -- Alert attributes
     alerts.alert_type AS ALERT_TYPE
-      WITH SYNONYMS = ('type')
-      COMMENT = 'Type of alert',
+      WITH SYNONYMS = ('type'),
     
     alerts.severity AS ALERT_SEVERITY
-      WITH SYNONYMS = ('priority', 'criticality')
-      COMMENT = 'Alert severity level',
+      WITH SYNONYMS = ('priority', 'criticality'),
     
-    alerts.status AS ALERT_STATUS
-      COMMENT = 'Alert status (OPEN, ACKNOWLEDGED, RESOLVED)',
+    alerts.status AS ALERT_STATUS,
     
     alerts.title AS ALERT_TITLE
-      COMMENT = 'Alert title/summary'
   )
-
   METRICS (
     -- Contract metrics
-    contracts.total_contracts AS COUNT(DISTINCT contracts.CONTRACT_ID)
-      WITH SYNONYMS = ('contract count')
-      COMMENT = 'Total number of contracts',
+    total_contracts AS COUNT(DISTINCT contracts.CONTRACT_ID)
+      WITH SYNONYMS = ('contract count'),
     
-    contracts.active_contracts AS COUNT_IF(contracts.STATUS = 'active')
-      COMMENT = 'Number of active contracts',
+    active_contracts AS COUNT_IF(contracts.STATUS = 'active'),
     
     -- Consumer metrics
-    consumers.total_consumers AS COUNT(DISTINCT consumers.CONSUMER_ID)
-      WITH SYNONYMS = ('subscriber count')
-      COMMENT = 'Total contract consumers',
+    total_consumers AS COUNT(DISTINCT consumers.CONSUMER_ID)
+      WITH SYNONYMS = ('subscriber count'),
     
-    consumers.avg_consumers_per_contract AS 
-      (COUNT(DISTINCT consumers.CONSUMER_ID) * 1.0 / NULLIF(COUNT(DISTINCT contracts.CONTRACT_ID), 0))
-      COMMENT = 'Average consumers per contract',
+    avg_consumers_per_contract AS 
+      (COUNT(DISTINCT consumers.CONSUMER_ID) * 1.0 / NULLIF(COUNT(DISTINCT contracts.CONTRACT_ID), 0)),
     
     -- Quality rule metrics
-    quality_rules.total_rules AS COUNT(DISTINCT quality_rules.RULE_ID)
-      WITH SYNONYMS = ('rule count')
-      COMMENT = 'Total quality rules defined',
+    total_rules AS COUNT(DISTINCT quality_rules.RULE_ID)
+      WITH SYNONYMS = ('rule count'),
     
-    quality_rules.enabled_rules AS COUNT_IF(quality_rules.ENABLED = TRUE)
-      COMMENT = 'Number of enabled rules',
+    enabled_rules AS COUNT_IF(quality_rules.ENABLED = TRUE),
     
     -- Alert metrics
-    alerts.total_alerts AS COUNT(DISTINCT alerts.ALERT_ID)
-      WITH SYNONYMS = ('alert count')
-      COMMENT = 'Total alerts',
+    total_alerts AS COUNT(DISTINCT alerts.ALERT_ID)
+      WITH SYNONYMS = ('alert count'),
     
-    alerts.open_alerts AS COUNT_IF(alerts.STATUS = 'OPEN')
-      WITH SYNONYMS = ('active alerts', 'unresolved alerts')
-      COMMENT = 'Number of open alerts',
+    open_alerts AS COUNT_IF(alerts.STATUS = 'OPEN')
+      WITH SYNONYMS = ('active alerts', 'unresolved alerts'),
     
-    alerts.critical_alerts AS COUNT_IF(alerts.SEVERITY = 'CRITICAL')
+    critical_alerts AS COUNT_IF(alerts.SEVERITY = 'CRITICAL')
       WITH SYNONYMS = ('high priority alerts')
-      COMMENT = 'Number of critical severity alerts'
-  );
+  )
+  COMMENT = 'Governance analytics semantic view for monitoring data contract health, SLA compliance, and data quality across the platform.';
 
 -- Apply governance tags
 ALTER SEMANTIC VIEW SEM_DEV.SEM_SALES.GOVERNANCE_ANALYTICS
