@@ -506,12 +506,69 @@ AS
 -- ALTER TASK GOVERNANCE.OBSERVABILITY.TASK_GENERATE_ALERTS RESUME;
 
 -- ─────────────────────────────────────────────────────────────────────────────
+-- SEMANTIC VIEW: Governance Analytics
+-- ─────────────────────────────────────────────────────────────────────────────
+-- This semantic view is created here (after ALERTS table) rather than in
+-- 06_semantic_layer.sql because it depends on the ALERTS table.
+
+USE DATABASE SEM_DEV;
+
+CREATE SCHEMA IF NOT EXISTS SEM_DEV.SEM_GOVERNANCE
+    COMMENT = 'Semantic layer for governance analytics';
+
+CREATE OR REPLACE SEMANTIC VIEW SEM_DEV.SEM_GOVERNANCE.GOVERNANCE_ANALYTICS
+  TABLES (
+    contracts AS GOVERNANCE.CONTRACT_REGISTRY.CONTRACTS PRIMARY KEY (CONTRACT_ID),
+    consumers AS GOVERNANCE.CONTRACT_REGISTRY.CONTRACT_CONSUMERS PRIMARY KEY (CONSUMER_ID),
+    quality_rules AS GOVERNANCE.CONTRACT_REGISTRY.QUALITY_RULES PRIMARY KEY (RULE_ID),
+    alerts AS GOVERNANCE.OBSERVABILITY.ALERTS PRIMARY KEY (ALERT_ID)
+  )
+  RELATIONSHIPS (
+    consumers(CONTRACT_ID) REFERENCES contracts(CONTRACT_ID),
+    quality_rules(CONTRACT_ID) REFERENCES contracts(CONTRACT_ID),
+    alerts(CONTRACT_ID) REFERENCES contracts(CONTRACT_ID)
+  )
+  DIMENSIONS (
+    contracts.CONTRACT_ID AS CONTRACT_ID,
+    contracts.CONTRACT_TYPE AS CONTRACT_TYPE,
+    contracts.STATUS AS CONTRACT_STATUS,
+    contracts.PRODUCER_SYSTEM AS PRODUCER_SYSTEM,
+    consumers.CONSUMER_SYSTEM AS CONSUMER_SYSTEM,
+    consumers.USE_CASE AS USE_CASE,
+    quality_rules.RULE_NAME AS RULE_NAME,
+    quality_rules.SEVERITY AS RULE_SEVERITY,
+    quality_rules.ENABLED AS RULE_ENABLED,
+    alerts.ALERT_TYPE AS ALERT_TYPE,
+    alerts.SEVERITY AS ALERT_SEVERITY,
+    alerts.STATUS AS ALERT_STATUS,
+    alerts.TITLE AS ALERT_TITLE
+  )
+  METRICS (
+    -- Table-scoped metrics
+    contracts.contract_count AS COUNT(contracts.CONTRACT_ID),
+    contracts.total_versions AS SUM(contracts.VERSION),
+    consumers.consumer_count AS COUNT(consumers.CONSUMER_ID),
+    quality_rules.rule_count AS COUNT(quality_rules.RULE_ID),
+    alerts.alert_count AS COUNT(alerts.ALERT_ID),
+    
+    -- Derived metrics
+    average_consumers_per_contract AS consumers.consumer_count / NULLIF(contracts.contract_count, 0),
+    average_rules_per_contract AS quality_rules.rule_count / NULLIF(contracts.contract_count, 0)
+  )
+  COMMENT = 'Governance analytics semantic view for contract health monitoring';
+
+-- Grant access
+GRANT SELECT, REFERENCES ON SEMANTIC VIEW SEM_DEV.SEM_GOVERNANCE.GOVERNANCE_ANALYTICS TO ROLE DATA_STEWARD;
+GRANT SELECT, REFERENCES ON SEMANTIC VIEW SEM_DEV.SEM_GOVERNANCE.GOVERNANCE_ANALYTICS TO ROLE DATA_ANALYST;
+
+-- ─────────────────────────────────────────────────────────────────────────────
 -- VERIFICATION
 -- ─────────────────────────────────────────────────────────────────────────────
 
 SELECT 'Observability Dashboard Created Successfully' AS STATUS;
 
 SHOW VIEWS IN SCHEMA GOVERNANCE.OBSERVABILITY;
+SHOW SEMANTIC VIEWS IN SCHEMA SEM_DEV.SEM_GOVERNANCE;
 
 -- Sample dashboard query
 SELECT * FROM GOVERNANCE.OBSERVABILITY.VW_DASHBOARD_KPIS;

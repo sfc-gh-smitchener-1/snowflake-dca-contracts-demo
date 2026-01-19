@@ -231,54 +231,13 @@ GRANT SELECT, REFERENCES ON SEMANTIC VIEW SEM_DEV.SEM_PRODUCT.PRODUCT_ANALYTICS 
 GRANT SELECT, REFERENCES ON SEMANTIC VIEW SEM_DEV.SEM_PRODUCT.PRODUCT_ANALYTICS TO ROLE AI_AGENT;
 
 -- ─────────────────────────────────────────────────────────────────────────────
--- SEMANTIC VIEW: Governance Analytics
+-- NOTE: Governance Analytics Semantic View
 -- ─────────────────────────────────────────────────────────────────────────────
-
-CREATE OR REPLACE SEMANTIC VIEW SEM_DEV.SEM_SALES.GOVERNANCE_ANALYTICS
-  TABLES (
-    contracts AS GOVERNANCE.CONTRACT_REGISTRY.CONTRACTS PRIMARY KEY (CONTRACT_ID),
-    consumers AS GOVERNANCE.CONTRACT_REGISTRY.CONTRACT_CONSUMERS PRIMARY KEY (CONSUMER_ID),
-    quality_rules AS GOVERNANCE.CONTRACT_REGISTRY.QUALITY_RULES PRIMARY KEY (RULE_ID),
-    alerts AS GOVERNANCE.OBSERVABILITY.ALERTS PRIMARY KEY (ALERT_ID)
-  )
-  RELATIONSHIPS (
-    consumers(CONTRACT_ID) REFERENCES contracts(CONTRACT_ID),
-    quality_rules(CONTRACT_ID) REFERENCES contracts(CONTRACT_ID),
-    alerts(CONTRACT_ID) REFERENCES contracts(CONTRACT_ID)
-  )
-  DIMENSIONS (
-    contracts.CONTRACT_ID AS CONTRACT_ID,
-    contracts.CONTRACT_TYPE AS CONTRACT_TYPE,
-    contracts.STATUS AS CONTRACT_STATUS,
-    contracts.PRODUCER_SYSTEM AS PRODUCER_SYSTEM,
-    consumers.CONSUMER_SYSTEM AS CONSUMER_SYSTEM,
-    consumers.USE_CASE AS USE_CASE,
-    quality_rules.RULE_NAME AS RULE_NAME,
-    quality_rules.SEVERITY AS RULE_SEVERITY,
-    quality_rules.ENABLED AS RULE_ENABLED,
-    alerts.ALERT_TYPE AS ALERT_TYPE,
-    alerts.SEVERITY AS ALERT_SEVERITY,
-    alerts.STATUS AS ALERT_STATUS,
-    alerts.TITLE AS ALERT_TITLE
-  )
-  METRICS (
-    -- Table-scoped metrics
-    contracts.contract_count AS COUNT(contracts.CONTRACT_ID),
-    contracts.total_versions AS SUM(contracts.VERSION),
-    consumers.consumer_count AS COUNT(consumers.CONSUMER_ID),
-    quality_rules.rule_count AS COUNT(quality_rules.RULE_ID),
-    alerts.alert_count AS COUNT(alerts.ALERT_ID),
-    
-    -- Derived metrics
-    average_consumers_per_contract AS consumers.consumer_count / NULLIF(contracts.contract_count, 0),
-    average_rules_per_contract AS quality_rules.rule_count / NULLIF(contracts.contract_count, 0)
-  )
-  COMMENT = 'Governance analytics semantic view for contract health monitoring';
-
--- Note: Governance tags flow from base tables (CONTRACTS, CONTRACT_CONSUMERS, QUALITY_RULES, ALERTS)
--- Grant access
-GRANT SELECT, REFERENCES ON SEMANTIC VIEW SEM_DEV.SEM_SALES.GOVERNANCE_ANALYTICS TO ROLE DATA_STEWARD;
-GRANT SELECT, REFERENCES ON SEMANTIC VIEW SEM_DEV.SEM_SALES.GOVERNANCE_ANALYTICS TO ROLE DATA_ANALYST;
+-- The GOVERNANCE_ANALYTICS semantic view depends on the ALERTS table which is
+-- created in 08_observability_dashboard.sql. This semantic view is created
+-- at the end of that script after all dependencies are available.
+-- 
+-- See: sql/08_observability_dashboard.sql for the GOVERNANCE_ANALYTICS view
 
 -- ─────────────────────────────────────────────────────────────────────────────
 -- VERIFICATION
@@ -292,10 +251,10 @@ SHOW SEMANTIC VIEWS IN DATABASE SEM_DEV;
 -- NOTES FOR CORTEX ANALYST
 -- ─────────────────────────────────────────────────────────────────────────────
 /*
-Available Semantic Views:
+Available Semantic Views (after running all scripts):
 - SEM_DEV.SEM_SALES.SALES_ANALYTICS - Sales, revenue, orders
 - SEM_DEV.SEM_CUSTOMER.CUSTOMER_ANALYTICS - Customer health, churn, LTV
 - SEM_DEV.SEM_SALES.SUPPLIER_ANALYTICS - Supplier performance
 - SEM_DEV.SEM_PRODUCT.PRODUCT_ANALYTICS - Product performance, inventory
-- SEM_DEV.SEM_SALES.GOVERNANCE_ANALYTICS - Contract health, alerts
+- SEM_DEV.SEM_GOVERNANCE.GOVERNANCE_ANALYTICS - Contract health, alerts (created in 08_observability_dashboard.sql)
 */
