@@ -33,7 +33,6 @@ CREATE SCHEMA IF NOT EXISTS SEM_DEV.SEM_PRODUCT
 -- ─────────────────────────────────────────────────────────────────────────────
 
 CREATE OR REPLACE SEMANTIC VIEW SEM_DEV.SEM_SALES.SALES_ANALYTICS
-AS
   TABLES (
     orders AS CURATED_DEV.CURATED_FACTS.FACT_ORDERS PRIMARY KEY (ORDER_KEY),
     line_items AS CURATED_DEV.CURATED_FACTS.FACT_LINEITEM PRIMARY KEY (ORDER_KEY, LINE_NUMBER),
@@ -44,56 +43,59 @@ AS
     dates AS CURATED_DEV.CURATED_DIMENSIONS.DIM_DATE PRIMARY KEY (DATE_KEY)
   )
   RELATIONSHIPS (
-    orders.CUSTOMER_KEY = customers.CUSTOMER_KEY,
-    line_items.ORDER_KEY = orders.ORDER_KEY,
-    line_items.PART_KEY = parts.PART_KEY,
-    line_items.SUPPLIER_KEY = suppliers.SUPPLIER_KEY,
-    customers.NATION_KEY = geography.NATION_KEY,
-    orders.ORDER_DATE_KEY = dates.DATE_KEY
-  )
-  FACTS (
-    line_items.EXTENDED_PRICE AS extended_price,
-    line_items.DISCOUNTED_PRICE AS discounted_price,
-    line_items.DISCOUNT_AMOUNT AS discount_amount,
-    line_items.TAX_AMOUNT AS tax_amount,
-    line_items.QUANTITY AS quantity,
-    line_items.DELIVERY_DAYS AS delivery_days,
-    orders.ORDER_TOTAL AS order_total
+    orders(CUSTOMER_KEY) REFERENCES customers(CUSTOMER_KEY),
+    line_items(ORDER_KEY) REFERENCES orders(ORDER_KEY),
+    line_items(PART_KEY) REFERENCES parts(PART_KEY),
+    line_items(SUPPLIER_KEY) REFERENCES suppliers(SUPPLIER_KEY),
+    customers(NATION_KEY) REFERENCES geography(NATION_KEY),
+    orders(ORDER_DATE_KEY) REFERENCES dates(DATE_KEY)
   )
   DIMENSIONS (
-    dates.YEAR AS year,
-    dates.QUARTER AS quarter,
-    dates.MONTH AS month,
-    dates.MONTH_NAME AS month_name,
-    dates.FULL_DATE AS full_date,
-    geography.REGION_NAME AS region_name,
-    geography.NATION_NAME AS nation_name,
-    customers.MARKET_SEGMENT AS market_segment,
-    customers.CUSTOMER_TIER AS customer_tier,
-    parts.PART_NAME AS part_name,
-    parts.BRAND AS brand,
-    parts.PART_TYPE AS part_type,
-    parts.PRICE_TIER AS price_tier,
-    suppliers.SUPPLIER_NAME AS supplier_name,
-    suppliers.SUPPLIER_TIER AS supplier_tier,
-    orders.ORDER_STATUS_DESC AS order_status,
-    orders.ORDER_PRIORITY AS order_priority,
-    line_items.SHIP_MODE AS ship_mode,
-    line_items.RETURN_STATUS AS return_status,
-    line_items.DELIVERY_STATUS AS delivery_status
+    -- Time dimensions
+    dates.YEAR AS YEAR,
+    dates.QUARTER AS QUARTER,
+    dates.MONTH AS MONTH,
+    dates.MONTH_NAME AS MONTH_NAME,
+    dates.FULL_DATE AS ORDER_DATE,
+    -- Geographic dimensions
+    geography.REGION_NAME AS REGION_NAME,
+    geography.NATION_NAME AS NATION_NAME,
+    -- Customer dimensions
+    customers.MARKET_SEGMENT AS MARKET_SEGMENT,
+    customers.CUSTOMER_TIER AS CUSTOMER_TIER,
+    -- Product dimensions
+    parts.PART_NAME AS PART_NAME,
+    parts.BRAND AS BRAND,
+    parts.PART_TYPE AS PART_TYPE,
+    parts.PRICE_TIER AS PRICE_TIER,
+    -- Supplier dimensions
+    suppliers.SUPPLIER_NAME AS SUPPLIER_NAME,
+    suppliers.SUPPLIER_TIER AS SUPPLIER_TIER,
+    -- Order dimensions
+    orders.ORDER_STATUS_DESC AS ORDER_STATUS,
+    orders.ORDER_PRIORITY AS ORDER_PRIORITY,
+    -- Line item dimensions
+    line_items.SHIP_MODE AS SHIP_MODE,
+    line_items.RETURN_STATUS AS RETURN_STATUS,
+    line_items.DELIVERY_STATUS AS DELIVERY_STATUS
   )
   METRICS (
-    total_revenue AS SUM(extended_price),
-    total_net_revenue AS SUM(discounted_price),
-    total_discounts AS SUM(discount_amount),
-    total_tax AS SUM(tax_amount),
-    total_quantity AS SUM(quantity),
-    average_order_value AS AVG(order_total),
-    average_delivery_days AS AVG(delivery_days),
-    line_item_count AS COUNT(line_items.LINE_NUMBER),
-    order_count AS COUNT(orders.ORDER_KEY)
+    -- Table-scoped metrics
+    line_items.total_revenue AS SUM(line_items.EXTENDED_PRICE),
+    line_items.total_net_revenue AS SUM(line_items.DISCOUNTED_PRICE),
+    line_items.total_discounts AS SUM(line_items.DISCOUNT_AMOUNT),
+    line_items.total_tax AS SUM(line_items.TAX_AMOUNT),
+    line_items.total_quantity AS SUM(line_items.QUANTITY),
+    line_items.total_delivery_days AS SUM(line_items.DELIVERY_DAYS),
+    orders.total_order_value AS SUM(orders.ORDER_TOTAL),
+    orders.order_count AS COUNT(orders.ORDER_KEY),
+    line_items.line_item_count AS COUNT(line_items.LINE_NUMBER),
+    customers.customer_count AS COUNT(customers.CUSTOMER_KEY),
+    -- Derived metrics
+    average_order_value AS orders.total_order_value / NULLIF(orders.order_count, 0),
+    average_delivery_days AS line_items.total_delivery_days / NULLIF(line_items.line_item_count, 0)
   )
-  COMMENT = 'Sales analytics semantic view for Cortex Analyst';
+  COMMENT = 'Sales analytics semantic view for Cortex Analyst - combines orders, line items, customers, and products';
 
 -- Apply governance tags
 ALTER SEMANTIC VIEW SEM_DEV.SEM_SALES.SALES_ANALYTICS
@@ -111,42 +113,37 @@ GRANT SELECT, REFERENCES ON SEMANTIC VIEW SEM_DEV.SEM_SALES.SALES_ANALYTICS TO R
 -- ─────────────────────────────────────────────────────────────────────────────
 
 CREATE OR REPLACE SEMANTIC VIEW SEM_DEV.SEM_CUSTOMER.CUSTOMER_ANALYTICS
-AS
   TABLES (
     customers AS CURATED_DEV.CURATED_DIMENSIONS.DIM_CUSTOMER PRIMARY KEY (CUSTOMER_KEY),
     customer_orders AS CURATED_DEV.CURATED_FACTS.FACT_CUSTOMER_ORDERS_SUMMARY PRIMARY KEY (CUSTOMER_KEY),
     geography AS CURATED_DEV.CURATED_DIMENSIONS.DIM_GEOGRAPHY PRIMARY KEY (NATION_KEY)
   )
   RELATIONSHIPS (
-    customers.CUSTOMER_KEY = customer_orders.CUSTOMER_KEY,
-    customers.NATION_KEY = geography.NATION_KEY
-  )
-  FACTS (
-    customer_orders.TOTAL_ORDERS AS total_orders,
-    customer_orders.TOTAL_REVENUE AS total_revenue,
-    customer_orders.AVG_ORDER_VALUE AS avg_order_value,
-    customer_orders.TOTAL_QUANTITY AS total_quantity,
-    customer_orders.DAYS_SINCE_LAST_ORDER AS days_since_last_order,
-    customer_orders.CUSTOMER_TENURE_DAYS AS customer_tenure_days
+    customers(CUSTOMER_KEY) REFERENCES customer_orders(CUSTOMER_KEY),
+    customers(NATION_KEY) REFERENCES geography(NATION_KEY)
   )
   DIMENSIONS (
-    customers.MARKET_SEGMENT AS market_segment,
-    customers.CUSTOMER_TIER AS customer_tier,
-    customers.BALANCE_STATUS AS balance_status,
-    geography.REGION_NAME AS region_name,
-    geography.NATION_NAME AS nation_name,
-    customer_orders.ACTIVITY_STATUS AS activity_status,
-    customer_orders.FIRST_ORDER_DATE AS first_order_date,
-    customer_orders.LAST_ORDER_DATE AS last_order_date
+    customers.MARKET_SEGMENT AS MARKET_SEGMENT,
+    customers.CUSTOMER_TIER AS CUSTOMER_TIER,
+    customers.BALANCE_STATUS AS BALANCE_STATUS,
+    geography.REGION_NAME AS REGION_NAME,
+    geography.NATION_NAME AS NATION_NAME,
+    customer_orders.ACTIVITY_STATUS AS ACTIVITY_STATUS,
+    customer_orders.FIRST_ORDER_DATE AS FIRST_ORDER_DATE,
+    customer_orders.LAST_ORDER_DATE AS LAST_ORDER_DATE
   )
   METRICS (
-    customer_count AS COUNT(customers.CUSTOMER_KEY),
-    total_lifetime_value AS SUM(total_revenue),
-    average_lifetime_value AS AVG(total_revenue),
-    total_orders_all AS SUM(total_orders),
-    average_orders_per_customer AS AVG(total_orders),
-    average_recency AS AVG(days_since_last_order),
-    average_tenure AS AVG(customer_tenure_days)
+    -- Table-scoped metrics
+    customers.customer_count AS COUNT(customers.CUSTOMER_KEY),
+    customer_orders.total_lifetime_value AS SUM(customer_orders.TOTAL_REVENUE),
+    customer_orders.total_orders_all AS SUM(customer_orders.TOTAL_ORDERS),
+    customer_orders.total_tenure_days AS SUM(customer_orders.CUSTOMER_TENURE_DAYS),
+    customer_orders.total_recency_days AS SUM(customer_orders.DAYS_SINCE_LAST_ORDER),
+    -- Derived metrics
+    average_lifetime_value AS customer_orders.total_lifetime_value / NULLIF(customers.customer_count, 0),
+    average_orders_per_customer AS customer_orders.total_orders_all / NULLIF(customers.customer_count, 0),
+    average_recency AS customer_orders.total_recency_days / NULLIF(customers.customer_count, 0),
+    average_tenure AS customer_orders.total_tenure_days / NULLIF(customers.customer_count, 0)
   )
   COMMENT = 'Customer analytics semantic view with RFM scoring and segmentation';
 
@@ -165,39 +162,35 @@ GRANT SELECT, REFERENCES ON SEMANTIC VIEW SEM_DEV.SEM_CUSTOMER.CUSTOMER_ANALYTIC
 -- ─────────────────────────────────────────────────────────────────────────────
 
 CREATE OR REPLACE SEMANTIC VIEW SEM_DEV.SEM_SALES.SUPPLIER_ANALYTICS
-AS
   TABLES (
     suppliers AS CURATED_DEV.CURATED_DIMENSIONS.DIM_SUPPLIER PRIMARY KEY (SUPPLIER_KEY),
     line_items AS CURATED_DEV.CURATED_FACTS.FACT_LINEITEM PRIMARY KEY (ORDER_KEY, LINE_NUMBER),
     partsupp AS CURATED_DEV.CURATED_FACTS.FACT_PARTSUPP PRIMARY KEY (PART_KEY, SUPPLIER_KEY)
   )
   RELATIONSHIPS (
-    line_items.SUPPLIER_KEY = suppliers.SUPPLIER_KEY,
-    partsupp.SUPPLIER_KEY = suppliers.SUPPLIER_KEY
-  )
-  FACTS (
-    line_items.EXTENDED_PRICE AS extended_price,
-    line_items.QUANTITY AS quantity,
-    line_items.DELIVERY_DAYS AS delivery_days,
-    partsupp.AVAILABLE_QUANTITY AS available_quantity,
-    partsupp.SUPPLY_COST AS supply_cost
+    line_items(SUPPLIER_KEY) REFERENCES suppliers(SUPPLIER_KEY),
+    partsupp(SUPPLIER_KEY) REFERENCES suppliers(SUPPLIER_KEY)
   )
   DIMENSIONS (
-    suppliers.SUPPLIER_NAME AS supplier_name,
-    suppliers.SUPPLIER_TIER AS supplier_tier,
-    suppliers.NATION_NAME AS nation_name,
-    suppliers.REGION_NAME AS region_name,
-    line_items.DELIVERY_STATUS AS delivery_status,
-    line_items.RETURN_STATUS AS return_status
+    suppliers.SUPPLIER_NAME AS SUPPLIER_NAME,
+    suppliers.SUPPLIER_TIER AS SUPPLIER_TIER,
+    suppliers.NATION_NAME AS NATION_NAME,
+    suppliers.REGION_NAME AS REGION_NAME,
+    line_items.DELIVERY_STATUS AS DELIVERY_STATUS,
+    line_items.RETURN_STATUS AS RETURN_STATUS
   )
   METRICS (
-    supplier_count AS COUNT(suppliers.SUPPLIER_KEY),
-    total_revenue AS SUM(extended_price),
-    total_quantity AS SUM(quantity),
-    average_delivery_days AS AVG(delivery_days),
-    total_inventory AS SUM(available_quantity),
-    total_supply_cost AS SUM(supply_cost),
-    line_item_count AS COUNT(line_items.LINE_NUMBER)
+    -- Table-scoped metrics
+    suppliers.supplier_count AS COUNT(suppliers.SUPPLIER_KEY),
+    line_items.total_revenue AS SUM(line_items.EXTENDED_PRICE),
+    line_items.total_quantity AS SUM(line_items.QUANTITY),
+    line_items.total_delivery_days AS SUM(line_items.DELIVERY_DAYS),
+    line_items.line_item_count AS COUNT(line_items.LINE_NUMBER),
+    partsupp.total_inventory AS SUM(partsupp.AVAILABLE_QUANTITY),
+    partsupp.total_supply_cost AS SUM(partsupp.SUPPLY_COST),
+    -- Derived metrics
+    average_delivery_days AS line_items.total_delivery_days / NULLIF(line_items.line_item_count, 0),
+    average_revenue_per_supplier AS line_items.total_revenue / NULLIF(suppliers.supplier_count, 0)
   )
   COMMENT = 'Supplier performance semantic view for procurement analytics';
 
@@ -216,43 +209,37 @@ GRANT SELECT, REFERENCES ON SEMANTIC VIEW SEM_DEV.SEM_SALES.SUPPLIER_ANALYTICS T
 -- ─────────────────────────────────────────────────────────────────────────────
 
 CREATE OR REPLACE SEMANTIC VIEW SEM_DEV.SEM_PRODUCT.PRODUCT_ANALYTICS
-AS
   TABLES (
     parts AS CURATED_DEV.CURATED_DIMENSIONS.DIM_PART PRIMARY KEY (PART_KEY),
     line_items AS CURATED_DEV.CURATED_FACTS.FACT_LINEITEM PRIMARY KEY (ORDER_KEY, LINE_NUMBER),
     partsupp AS CURATED_DEV.CURATED_FACTS.FACT_PARTSUPP PRIMARY KEY (PART_KEY, SUPPLIER_KEY)
   )
   RELATIONSHIPS (
-    line_items.PART_KEY = parts.PART_KEY,
-    partsupp.PART_KEY = parts.PART_KEY
-  )
-  FACTS (
-    line_items.EXTENDED_PRICE AS extended_price,
-    line_items.DISCOUNTED_PRICE AS discounted_price,
-    line_items.QUANTITY AS quantity,
-    parts.RETAIL_PRICE AS retail_price,
-    partsupp.SUPPLY_COST AS supply_cost,
-    partsupp.AVAILABLE_QUANTITY AS available_quantity
+    line_items(PART_KEY) REFERENCES parts(PART_KEY),
+    partsupp(PART_KEY) REFERENCES parts(PART_KEY)
   )
   DIMENSIONS (
-    parts.PART_NAME AS part_name,
-    parts.BRAND AS brand,
-    parts.MANUFACTURER AS manufacturer,
-    parts.PART_TYPE AS part_type,
-    parts.SIZE_CATEGORY AS size_category,
-    parts.PRICE_TIER AS price_tier,
-    parts.CONTAINER_TYPE AS container_type,
-    line_items.RETURN_STATUS AS return_status
+    parts.PART_NAME AS PART_NAME,
+    parts.BRAND AS BRAND,
+    parts.MANUFACTURER AS MANUFACTURER,
+    parts.PART_TYPE AS PART_TYPE,
+    parts.SIZE_CATEGORY AS SIZE_CATEGORY,
+    parts.PRICE_TIER AS PRICE_TIER,
+    parts.CONTAINER_TYPE AS CONTAINER_TYPE,
+    line_items.RETURN_STATUS AS RETURN_STATUS
   )
   METRICS (
-    product_count AS COUNT(parts.PART_KEY),
-    total_revenue AS SUM(extended_price),
-    total_net_revenue AS SUM(discounted_price),
-    total_quantity_sold AS SUM(quantity),
-    total_inventory AS SUM(available_quantity),
-    total_inventory_cost AS SUM(supply_cost),
-    average_retail_price AS AVG(retail_price),
-    average_supply_cost AS AVG(supply_cost)
+    -- Table-scoped metrics
+    parts.product_count AS COUNT(parts.PART_KEY),
+    parts.total_retail_value AS SUM(parts.RETAIL_PRICE),
+    line_items.total_revenue AS SUM(line_items.EXTENDED_PRICE),
+    line_items.total_net_revenue AS SUM(line_items.DISCOUNTED_PRICE),
+    line_items.total_quantity_sold AS SUM(line_items.QUANTITY),
+    partsupp.total_inventory AS SUM(partsupp.AVAILABLE_QUANTITY),
+    partsupp.total_inventory_cost AS SUM(partsupp.SUPPLY_COST),
+    -- Derived metrics
+    average_retail_price AS parts.total_retail_value / NULLIF(parts.product_count, 0),
+    average_supply_cost AS partsupp.total_inventory_cost / NULLIF(partsupp.total_inventory, 0)
   )
   COMMENT = 'Product analytics semantic view for inventory and performance';
 
@@ -271,7 +258,6 @@ GRANT SELECT, REFERENCES ON SEMANTIC VIEW SEM_DEV.SEM_PRODUCT.PRODUCT_ANALYTICS 
 -- ─────────────────────────────────────────────────────────────────────────────
 
 CREATE OR REPLACE SEMANTIC VIEW SEM_DEV.SEM_SALES.GOVERNANCE_ANALYTICS
-AS
   TABLES (
     contracts AS GOVERNANCE.CONTRACT_REGISTRY.CONTRACTS PRIMARY KEY (CONTRACT_ID),
     consumers AS GOVERNANCE.CONTRACT_REGISTRY.CONTRACT_CONSUMERS PRIMARY KEY (CONSUMER_ID),
@@ -279,34 +265,35 @@ AS
     alerts AS GOVERNANCE.OBSERVABILITY.ALERTS PRIMARY KEY (ALERT_ID)
   )
   RELATIONSHIPS (
-    consumers.CONTRACT_ID = contracts.CONTRACT_ID,
-    quality_rules.CONTRACT_ID = contracts.CONTRACT_ID,
-    alerts.CONTRACT_ID = contracts.CONTRACT_ID
-  )
-  FACTS (
-    contracts.VERSION AS version
+    consumers(CONTRACT_ID) REFERENCES contracts(CONTRACT_ID),
+    quality_rules(CONTRACT_ID) REFERENCES contracts(CONTRACT_ID),
+    alerts(CONTRACT_ID) REFERENCES contracts(CONTRACT_ID)
   )
   DIMENSIONS (
-    contracts.CONTRACT_ID AS contract_id,
-    contracts.CONTRACT_TYPE AS contract_type,
-    contracts.STATUS AS contract_status,
-    contracts.PRODUCER_SYSTEM AS producer_system,
-    consumers.CONSUMER_SYSTEM AS consumer_system,
-    consumers.USE_CASE AS use_case,
-    quality_rules.RULE_NAME AS rule_name,
-    quality_rules.SEVERITY AS rule_severity,
-    quality_rules.ENABLED AS rule_enabled,
-    alerts.ALERT_TYPE AS alert_type,
-    alerts.SEVERITY AS alert_severity,
-    alerts.STATUS AS alert_status,
-    alerts.TITLE AS alert_title
+    contracts.CONTRACT_ID AS CONTRACT_ID,
+    contracts.CONTRACT_TYPE AS CONTRACT_TYPE,
+    contracts.STATUS AS CONTRACT_STATUS,
+    contracts.PRODUCER_SYSTEM AS PRODUCER_SYSTEM,
+    consumers.CONSUMER_SYSTEM AS CONSUMER_SYSTEM,
+    consumers.USE_CASE AS USE_CASE,
+    quality_rules.RULE_NAME AS RULE_NAME,
+    quality_rules.SEVERITY AS RULE_SEVERITY,
+    quality_rules.ENABLED AS RULE_ENABLED,
+    alerts.ALERT_TYPE AS ALERT_TYPE,
+    alerts.SEVERITY AS ALERT_SEVERITY,
+    alerts.STATUS AS ALERT_STATUS,
+    alerts.TITLE AS ALERT_TITLE
   )
   METRICS (
-    contract_count AS COUNT(contracts.CONTRACT_ID),
-    consumer_count AS COUNT(consumers.CONSUMER_ID),
-    rule_count AS COUNT(quality_rules.RULE_ID),
-    alert_count AS COUNT(alerts.ALERT_ID),
-    total_versions AS SUM(version)
+    -- Table-scoped metrics
+    contracts.contract_count AS COUNT(contracts.CONTRACT_ID),
+    contracts.total_versions AS SUM(contracts.VERSION),
+    consumers.consumer_count AS COUNT(consumers.CONSUMER_ID),
+    quality_rules.rule_count AS COUNT(quality_rules.RULE_ID),
+    alerts.alert_count AS COUNT(alerts.ALERT_ID),
+    -- Derived metrics
+    average_consumers_per_contract AS consumers.consumer_count / NULLIF(contracts.contract_count, 0),
+    average_rules_per_contract AS quality_rules.rule_count / NULLIF(contracts.contract_count, 0)
   )
   COMMENT = 'Governance analytics semantic view for contract health monitoring';
 
