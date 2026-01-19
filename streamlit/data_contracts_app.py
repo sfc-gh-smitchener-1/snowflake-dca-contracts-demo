@@ -586,7 +586,7 @@ def render_cortex_page():
         
         # Show dataframe if present
         if message.get("df") is not None and not message["df"].empty:
-            st.dataframe(message["df"], use_container_width=True, hide_index=True)
+            st.dataframe(message["df"], use_container_width=True)
     
     # Sample questions
     if not st.session_state.messages:
@@ -690,7 +690,7 @@ def process_and_display_question(question: str, model: str):
     
     if result_df is not None and not result_df.empty:
         st.markdown("**Results:**")
-        st.dataframe(result_df, use_container_width=True, hide_index=True)
+        st.dataframe(result_df, use_container_width=True)
 
 # ============================================================================
 # HORIZON DASHBOARD PAGE
@@ -825,8 +825,7 @@ def render_horizon_dashboard():
         if display_cols:
             st.dataframe(
                 display_df[display_cols],
-                use_container_width=True,
-                hide_index=True
+                use_container_width=True
             )
         else:
             st.info("📋 Contract health data structure differs from expected. Check observability views.")
@@ -930,7 +929,7 @@ def render_contract_details():
                     """).to_pandas()
                     
                     if not consumers.empty:
-                        st.dataframe(consumers, use_container_width=True, hide_index=True)
+                        st.dataframe(consumers, use_container_width=True)
                     else:
                         st.info("No registered consumers for this contract")
                 except:
@@ -948,7 +947,7 @@ def render_contract_details():
                 """).to_pandas()
                 
                 if not rules.empty:
-                    st.dataframe(rules, use_container_width=True, hide_index=True)
+                    st.dataframe(rules, use_container_width=True)
                 else:
                     st.info("No quality rules defined for this contract")
             except:
