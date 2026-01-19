@@ -20,6 +20,12 @@ SELECT 'To proceed, comment out lines 14-17 and re-run this script.' AS INSTRUCT
 -- SET CONFIRM_CLEANUP = TRUE;
 
 -- ─────────────────────────────────────────────────────────────────────────────
+-- DROP STREAMLIT APP (Must be done before dropping schemas)
+-- ─────────────────────────────────────────────────────────────────────────────
+
+DROP STREAMLIT IF EXISTS SEM_DEV.SEM_SALES.DATA_CONTRACTS_APP;
+
+-- ─────────────────────────────────────────────────────────────────────────────
 -- DROP TASKS (Must be done before dropping schemas)
 -- ─────────────────────────────────────────────────────────────────────────────
 

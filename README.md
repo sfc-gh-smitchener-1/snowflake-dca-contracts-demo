@@ -250,6 +250,7 @@ snowflake-dca-contracts-demo/
 │   ├── 08_observability_dashboard.sql  # Monitoring views
 │   ├── 09_contract_generator_proc.sql  # Contract generator utility
 │   ├── 10_demo_sample_data.sql     # Sample data for demo
+│   ├── 12_streamlit_app.sql        # Deploy Streamlit app
 │   └── 99_cleanup_demo.sql         # Reset/cleanup script (ACCOUNTADMIN)
 │
 ├── semantic_models/                # Cortex Analyst Semantic Models (YAML)
@@ -273,10 +274,13 @@ snowflake-dca-contracts-demo/
 │   ├── upload_semantic_models.sql  # Upload models to stage (SnowSQL)
 │   └── upload_semantic_models_notebook.py  # For Snowflake Notebooks
 │
+├── streamlit/                      # Streamlit in Snowflake App
+│   └── data_contracts_app.py       # Main app with Cortex + Horizon dashboard
+│
 ├── docs/                           # Documentation
 │   ├── DATA_CONTRACTS_WIREFRAME.md # Detailed design document
 │   ├── ARCHITECTURE_ALIGNMENT.md   # EA Guide v.5 alignment
-│   └── SAMPLE_QUESTIONS.md         # 125+ Snowflake Intelligence questions
+│   └── SAMPLE_QUESTIONS.md         # 125+ Cortex Analyst questions
 │
 └── README.md
 ```
@@ -380,7 +384,31 @@ Key views for monitoring:
 - `VW_ACTIVE_ALERTS` - Current violations and warnings
 - `VW_TAG_COVERAGE` - Governance tag completeness
 
-### 6. Role-Based Access Control
+### 6. Deploy the Streamlit App
+```sql
+-- Run the deployment script
+@sql/12_streamlit_app.sql
+
+-- Then upload the app file to the stage:
+-- Method 1: SnowSQL
+PUT file://streamlit/data_contracts_app.py @SEM_DEV.SEM_SALES.STREAMLIT_STAGE AUTO_COMPRESS=FALSE OVERWRITE=TRUE;
+
+-- Method 2: Snowsight UI
+-- Navigate to Data → SEM_DEV → SEM_SALES → STREAMLIT_STAGE → Upload Files
+```
+
+Access the app at: **Projects → Streamlit → DATA_CONTRACTS_APP**
+
+**App Features:**
+
+| Tab | Description |
+|-----|-------------|
+| 🤖 **Cortex Analyst** | Natural language queries on semantic models |
+| 🔮 **Horizon Dashboard** | Governance health with stoplights, charts, alerts |
+| 📊 **Contract Details** | Individual contract exploration |
+| ℹ️ **About** | Architecture overview and resources |
+
+### 7. Role-Based Access Control
 
 The demo includes a complete role hierarchy implementing least-privilege access:
 
@@ -412,8 +440,8 @@ DATA_ENGINEER     DATA_STEWARD        PII_VIEWER
 
 **Demo Users:**
 - `DEMO_DATA_ADMIN`, `DEMO_DATA_ENGINEER`, `DEMO_DATA_STEWARD`
-- `DEMO_ANALYST_SALES`, `DEMO_ANALYST_MARKETING`
-- `DEMO_AI_AGENT`, `DEMO_BI_VIEWER`, `DEMO_PII_VIEWER`
+- `DEMO_DATA_ANALYST`, `DEMO_BI_VIEWER`
+- `DEMO_AI_AGENT`, `DEMO_PII_VIEWER`
 
 ## Sample Queries
 
