@@ -149,7 +149,7 @@ tables:
           - priority
           - level
         description: Alert severity (CRITICAL, ERROR, WARNING, INFO)
-        expr: ALERT_SEVERITY
+        expr: SEVERITY
         data_type: VARCHAR
         
       - name: alert_message
@@ -157,7 +157,7 @@ tables:
           - message
           - description
         description: Detailed alert message
-        expr: ALERT_MESSAGE
+        expr: MESSAGE
         data_type: VARCHAR
 
     measures:
@@ -176,7 +176,7 @@ tables:
           - critical issues
           - critical count
         description: Count of critical severity alerts
-        expr: SUM(CASE WHEN ALERT_SEVERITY = 'CRITICAL' THEN 1 ELSE 0 END)
+        expr: SUM(CASE WHEN SEVERITY = 'CRITICAL' THEN 1 ELSE 0 END)
         data_type: NUMBER
         default_aggregation: sum
         
@@ -185,7 +185,7 @@ tables:
           - errors
           - error count
         description: Count of error severity alerts
-        expr: SUM(CASE WHEN ALERT_SEVERITY = 'ERROR' THEN 1 ELSE 0 END)
+        expr: SUM(CASE WHEN SEVERITY = 'ERROR' THEN 1 ELSE 0 END)
         data_type: NUMBER
         default_aggregation: sum
         
@@ -194,7 +194,7 @@ tables:
           - warnings
           - warning count
         description: Count of warning severity alerts
-        expr: SUM(CASE WHEN ALERT_SEVERITY = 'WARNING' THEN 1 ELSE 0 END)
+        expr: SUM(CASE WHEN SEVERITY = 'WARNING' THEN 1 ELSE 0 END)
         data_type: NUMBER
         default_aggregation: sum
 
@@ -377,7 +377,7 @@ verifiedQueries:
   - name: freshness_violations
     question: Show me freshness SLA violations
     sql: |
-      SELECT CONTRACT_ID, ALERT_MESSAGE, CREATED_AT
+      SELECT CONTRACT_ID, MESSAGE, CREATED_AT
       FROM GOVERNANCE.OBSERVABILITY.VW_ACTIVE_ALERTS
       WHERE ALERT_TYPE = 'FRESHNESS'
       ORDER BY CREATED_AT DESC
@@ -385,17 +385,17 @@ verifiedQueries:
   - name: active_alerts
     question: What alerts are currently active?
     sql: |
-      SELECT ALERT_TYPE, ALERT_SEVERITY, COUNT(*) as alert_count
+      SELECT ALERT_TYPE, SEVERITY, COUNT(*) as alert_count
       FROM GOVERNANCE.OBSERVABILITY.VW_ACTIVE_ALERTS
-      GROUP BY ALERT_TYPE, ALERT_SEVERITY
+      GROUP BY ALERT_TYPE, SEVERITY
       ORDER BY alert_count DESC
       
   - name: critical_alerts
     question: Show me critical alerts
     sql: |
-      SELECT CONTRACT_ID, ALERT_TYPE, ALERT_MESSAGE, CREATED_AT
+      SELECT CONTRACT_ID, ALERT_TYPE, MESSAGE, CREATED_AT
       FROM GOVERNANCE.OBSERVABILITY.VW_ACTIVE_ALERTS
-      WHERE ALERT_SEVERITY = 'CRITICAL'
+      WHERE SEVERITY = 'CRITICAL'
       ORDER BY CREATED_AT DESC
       
   - name: contracts_with_most_alerts
