@@ -34,7 +34,18 @@ except ImportError:
 STAGE_DATABASE = "SEM_DEV"
 STAGE_SCHEMA = "SEM_SALES"
 STAGE_NAME = "SEMANTIC_MODELS"
-SEMANTIC_MODELS_DIR = Path(__file__).parent.parent / "semantic_models"
+
+# Determine the semantic models directory
+# Works both when run as a script and in interactive environments
+try:
+    SEMANTIC_MODELS_DIR = Path(__file__).parent.parent / "semantic_models"
+except NameError:
+    # Running in interactive environment (Jupyter, REPL, etc.)
+    # Assume current working directory is the project root
+    SEMANTIC_MODELS_DIR = Path.cwd() / "semantic_models"
+    if not SEMANTIC_MODELS_DIR.exists():
+        # Try one level up
+        SEMANTIC_MODELS_DIR = Path.cwd().parent / "semantic_models"
 
 
 def get_connection():
