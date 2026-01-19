@@ -340,58 +340,54 @@ HAVING MISSING_DATA_CLASSIFICATION OR MISSING_PII_TYPE OR MISSING_AI_ALLOWED;
 -- STORED PROCEDURES
 -- ─────────────────────────────────────────────────────────────────────────────
 
--- Register a new contract from YAML
+-- Register a new contract from YAML (using JavaScript for JSON parsing)
 CREATE OR REPLACE PROCEDURE GOVERNANCE.CONTRACT_REGISTRY.REGISTER_CONTRACT(
     P_CONTRACT_YAML TEXT
 )
 RETURNS VARCHAR
-LANGUAGE SQL
+LANGUAGE JAVASCRIPT
 AS
 $$
-DECLARE
-    v_contract_id VARCHAR;
-    v_version VARCHAR;
-    v_contract_type VARCHAR;
-    v_has_contract INT;
-    v_has_product INT;
-BEGIN
-    -- Check which type of contract this is
-    SELECT COUNT(*) INTO v_has_contract 
-    FROM TABLE(FLATTEN(INPUT => PARSE_JSON(:P_CONTRACT_YAML), PATH => 'contract', OUTER => TRUE)) 
-    WHERE VALUE IS NOT NULL;
+    // Parse the JSON
+    var parsed = JSON.parse(P_CONTRACT_YAML);
     
-    SELECT COUNT(*) INTO v_has_product 
-    FROM TABLE(FLATTEN(INPUT => PARSE_JSON(:P_CONTRACT_YAML), PATH => 'product', OUTER => TRUE)) 
-    WHERE VALUE IS NOT NULL;
+    var contract_id, version, contract_type;
     
-    -- Extract contract details based on type
-    IF v_has_contract > 0 THEN
-        v_contract_type := 'data';
-        SELECT PARSE_JSON(:P_CONTRACT_YAML):contract:id::VARCHAR INTO v_contract_id;
-        SELECT PARSE_JSON(:P_CONTRACT_YAML):contract:version::VARCHAR INTO v_version;
-    ELSIF v_has_product > 0 THEN
-        v_contract_type := 'product';
-        SELECT PARSE_JSON(:P_CONTRACT_YAML):product:id::VARCHAR INTO v_contract_id;
-        SELECT PARSE_JSON(:P_CONTRACT_YAML):product:version::VARCHAR INTO v_version;
-    ELSE
-        RETURN 'ERROR: Invalid contract format - missing contract or product key';
-    END IF;
+    // Determine contract type and extract ID/version
+    if (parsed.contract) {
+        contract_type = 'data';
+        contract_id = parsed.contract.id;
+        version = parsed.contract.version;
+    } else if (parsed.product) {
+        contract_type = 'product';
+        contract_id = parsed.product.id;
+        version = parsed.product.version;
+    } else {
+        return 'ERROR: Invalid contract format - missing contract or product key';
+    }
     
-    -- Insert or update contract using MERGE
-    MERGE INTO GOVERNANCE.CONTRACT_REGISTRY.CONTRACTS tgt
-    USING (SELECT :v_contract_id AS cid, :v_version AS ver) src
-    ON tgt.CONTRACT_ID = src.cid AND tgt.VERSION = src.ver
-    WHEN MATCHED THEN
-        UPDATE SET 
-            YAML_DEFINITION = PARSE_JSON(:P_CONTRACT_YAML),
-            UPDATED_AT = CURRENT_TIMESTAMP(),
-            UPDATED_BY = CURRENT_USER()
-    WHEN NOT MATCHED THEN
-        INSERT (CONTRACT_ID, CONTRACT_TYPE, VERSION, STATUS, YAML_DEFINITION)
-        VALUES (:v_contract_id, :v_contract_type, :v_version, 'draft', PARSE_JSON(:P_CONTRACT_YAML));
+    // Use MERGE to insert or update
+    var merge_sql = `
+        MERGE INTO GOVERNANCE.CONTRACT_REGISTRY.CONTRACTS tgt
+        USING (SELECT ? AS cid, ? AS ver) src
+        ON tgt.CONTRACT_ID = src.cid AND tgt.VERSION = src.ver
+        WHEN MATCHED THEN
+            UPDATE SET 
+                YAML_DEFINITION = PARSE_JSON(?),
+                UPDATED_AT = CURRENT_TIMESTAMP(),
+                UPDATED_BY = CURRENT_USER()
+        WHEN NOT MATCHED THEN
+            INSERT (CONTRACT_ID, CONTRACT_TYPE, VERSION, STATUS, YAML_DEFINITION)
+            VALUES (?, ?, ?, 'draft', PARSE_JSON(?))
+    `;
     
-    RETURN 'Contract registered: ' || v_contract_id || ' v' || v_version;
-END;
+    var stmt = snowflake.createStatement({
+        sqlText: merge_sql,
+        binds: [contract_id, version, P_CONTRACT_YAML, contract_id, contract_type, version, P_CONTRACT_YAML]
+    });
+    stmt.execute();
+    
+    return 'Contract registered: ' + contract_id + ' v' + version;
 $$;
 
 -- Notify consumers of breaking change
