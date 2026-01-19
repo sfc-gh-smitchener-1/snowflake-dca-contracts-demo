@@ -2,15 +2,16 @@
 # SNOWFLAKE NOTEBOOK: Upload Semantic Models to Stage
 # ============================================================================
 # Copy this entire cell into a Snowflake Notebook to upload semantic models.
-# The 'session' variable is automatically available in Snowflake Notebooks.
 # ============================================================================
-# Generate synthetic data with Snowpark (in-notebook, in-Snowflake) using Faker
+
+# Import Snowpark and get the active session
+from snowflake.snowpark.context import get_active_session
 from snowflake.snowpark.types import StructType, StructField, StringType, IntegerType, DateType, DoubleType
 import random
 import uuid
 from datetime import date, timedelta
 
-# Use the active Notebook session
+# Get the active Notebook session
 session = get_active_session()
 
 # Configuration
