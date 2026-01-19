@@ -85,11 +85,12 @@ CREATE OR REPLACE SEMANTIC VIEW SEM_DEV.SEM_SALES.SALES_ANALYTICS
     total_revenue AS SUM(line_items.EXTENDED_PRICE),
     total_net_revenue AS SUM(line_items.DISCOUNTED_PRICE),
     total_discounts AS SUM(line_items.DISCOUNT_AMOUNT),
-    order_count AS COUNT(DISTINCT orders.ORDER_KEY),
-    average_order_value AS AVG(orders.ORDER_TOTAL),
-    customer_count AS COUNT(DISTINCT customers.CUSTOMER_KEY),
+    total_tax AS SUM(line_items.TAX_AMOUNT),
     total_quantity AS SUM(line_items.QUANTITY),
-    average_delivery_days AS AVG(line_items.DELIVERY_DAYS)
+    average_order_value AS AVG(orders.ORDER_TOTAL),
+    average_delivery_days AS AVG(line_items.DELIVERY_DAYS),
+    line_item_count AS COUNT(line_items.LINE_NUMBER),
+    order_count AS COUNT(orders.ORDER_KEY)
   )
   COMMENT = 'Sales analytics semantic view for Cortex Analyst';
 
@@ -137,14 +138,13 @@ CREATE OR REPLACE SEMANTIC VIEW SEM_DEV.SEM_CUSTOMER.CUSTOMER_ANALYTICS
     customer_orders.last_order_date AS customer_orders.LAST_ORDER_DATE
   )
   METRICS (
-    total_customers AS COUNT(DISTINCT customers.CUSTOMER_KEY),
-    active_customers AS COUNT_IF(customer_orders.ACTIVITY_STATUS = 'ACTIVE'),
-    at_risk_customers AS COUNT_IF(customer_orders.ACTIVITY_STATUS = 'AT_RISK'),
-    churned_customers AS COUNT_IF(customer_orders.ACTIVITY_STATUS = 'CHURNED'),
-    average_lifetime_value AS AVG(customer_orders.TOTAL_REVENUE),
+    customer_count AS COUNT(customers.CUSTOMER_KEY),
     total_lifetime_value AS SUM(customer_orders.TOTAL_REVENUE),
+    average_lifetime_value AS AVG(customer_orders.TOTAL_REVENUE),
+    total_orders_all AS SUM(customer_orders.TOTAL_ORDERS),
     average_orders_per_customer AS AVG(customer_orders.TOTAL_ORDERS),
-    average_recency AS AVG(customer_orders.DAYS_SINCE_LAST_ORDER)
+    average_recency AS AVG(customer_orders.DAYS_SINCE_LAST_ORDER),
+    average_tenure AS AVG(customer_orders.CUSTOMER_TENURE_DAYS)
   )
   COMMENT = 'Customer analytics semantic view with RFM scoring and segmentation';
 
@@ -188,12 +188,13 @@ CREATE OR REPLACE SEMANTIC VIEW SEM_DEV.SEM_SALES.SUPPLIER_ANALYTICS
     line_items.return_status AS line_items.RETURN_STATUS
   )
   METRICS (
-    order_count AS COUNT(DISTINCT line_items.ORDER_KEY),
+    supplier_count AS COUNT(suppliers.SUPPLIER_KEY),
     total_revenue AS SUM(line_items.EXTENDED_PRICE),
     total_quantity AS SUM(line_items.QUANTITY),
     average_delivery_days AS AVG(line_items.DELIVERY_DAYS),
-    parts_supplied AS COUNT(DISTINCT partsupp.PART_KEY),
-    total_inventory AS SUM(partsupp.AVAILABLE_QUANTITY)
+    total_inventory AS SUM(partsupp.AVAILABLE_QUANTITY),
+    total_supply_cost AS SUM(partsupp.SUPPLY_COST),
+    line_item_count AS COUNT(line_items.LINE_NUMBER)
   )
   COMMENT = 'Supplier performance semantic view for procurement analytics';
 
@@ -240,11 +241,14 @@ CREATE OR REPLACE SEMANTIC VIEW SEM_DEV.SEM_PRODUCT.PRODUCT_ANALYTICS
     line_items.return_status AS line_items.RETURN_STATUS
   )
   METRICS (
+    product_count AS COUNT(parts.PART_KEY),
     total_revenue AS SUM(line_items.EXTENDED_PRICE),
+    total_net_revenue AS SUM(line_items.DISCOUNTED_PRICE),
     total_quantity_sold AS SUM(line_items.QUANTITY),
-    order_count AS COUNT(DISTINCT line_items.ORDER_KEY),
     total_inventory AS SUM(partsupp.AVAILABLE_QUANTITY),
-    supplier_count AS COUNT(DISTINCT partsupp.SUPPLIER_KEY)
+    total_inventory_cost AS SUM(partsupp.SUPPLY_COST),
+    average_retail_price AS AVG(parts.RETAIL_PRICE),
+    average_supply_cost AS AVG(partsupp.SUPPLY_COST)
   )
   COMMENT = 'Product analytics semantic view for inventory and performance';
 
@@ -293,14 +297,11 @@ CREATE OR REPLACE SEMANTIC VIEW SEM_DEV.SEM_SALES.GOVERNANCE_ANALYTICS
     alerts.title AS alerts.TITLE
   )
   METRICS (
-    total_contracts AS COUNT(DISTINCT contracts.CONTRACT_ID),
-    active_contracts AS COUNT_IF(contracts.STATUS = 'active'),
-    total_consumers AS COUNT(DISTINCT consumers.CONSUMER_ID),
-    total_rules AS COUNT(DISTINCT quality_rules.RULE_ID),
-    enabled_rules AS COUNT_IF(quality_rules.ENABLED = TRUE),
-    total_alerts AS COUNT(DISTINCT alerts.ALERT_ID),
-    open_alerts AS COUNT_IF(alerts.STATUS = 'OPEN'),
-    critical_alerts AS COUNT_IF(alerts.SEVERITY = 'CRITICAL')
+    contract_count AS COUNT(contracts.CONTRACT_ID),
+    consumer_count AS COUNT(consumers.CONSUMER_ID),
+    rule_count AS COUNT(quality_rules.RULE_ID),
+    alert_count AS COUNT(alerts.ALERT_ID),
+    total_versions AS SUM(contracts.VERSION)
   )
   COMMENT = 'Governance analytics semantic view for contract health monitoring';
 
