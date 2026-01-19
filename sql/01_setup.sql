@@ -1,21 +1,86 @@
 -- ============================================================================
--- DATA CONTRACTS DEMO - INITIAL SETUP
+-- SNOWFLAKE DATA CONTRACTS DEMO - INITIAL SETUP
 -- ============================================================================
--- This script creates ALL foundational objects for the demo:
+-- 
+-- This is the FIRST script to run. It creates ALL foundational objects:
 --   1. Roles and role hierarchy
---   2. Warehouses
+--   2. Warehouses  
 --   3. Databases and schemas
 --   4. Governance tags
+--   5. Future grants for access control
 --
 -- OWNERSHIP: DATA_ADMIN owns all objects (not ACCOUNTADMIN)
--- RUN AS: ACCOUNTADMIN (only script that needs this)
+-- RUN AS: ACCOUNTADMIN (only this script needs ACCOUNTADMIN)
+--
 -- ============================================================================
+-- DEMO OVERVIEW
+-- ============================================================================
+-- 
+-- 1. Three-layer architecture (RAW → CURATED → SEMANTIC)
+-- 2. Data contracts with governance tags
+-- 3. Contract validation and enforcement
+-- 4. Dynamic tables for automated transformation
+-- 5. Semantic models for Cortex Analyst
+-- 6. Observability dashboard for contract adherence
+-- 7. Role-based access control
+--
+-- DEMO DATA: Uses TPCH sample data from SNOWFLAKE_SAMPLE_DATA database
+--
+-- ============================================================================
+-- SCRIPT EXECUTION ORDER
+-- ============================================================================
+/*
+Step 1: 01_setup.sql (THIS SCRIPT - RUN AS ACCOUNTADMIN)
+        Creates roles, warehouses, databases, schemas, tags, grants
+        
+Step 2: 02_contract_registry.sql (RUN AS DATA_ADMIN)
+        Creates contract registry tables, views, and procedures
+        
+Step 3: 03_raw_layer_tables.sql (RUN AS DATA_ADMIN)
+        Creates RAW layer tables with contract-enforced schemas
+        
+Step 4: 04_direct_load_tpch.sql (RUN AS DATA_ADMIN)
+        Creates load procedures and loads TPCH data
+        
+Step 5: 05_curated_layer_dynamic_tables.sql (RUN AS DATA_ADMIN)
+        Creates dynamic tables for dimensions and facts
+        
+Step 6: 06_semantic_layer.sql (RUN AS DATA_ADMIN)
+        Creates semantic views and Cortex Analyst stage
+        
+Step 7: 07_contract_validation.sql (RUN AS DATA_ADMIN)
+        Creates validation procedures and SLA monitoring
+        
+Step 8: 08_observability_dashboard.sql (RUN AS DATA_ADMIN)
+        Creates monitoring views and dashboard KPIs
+        
+Step 9: 09_contract_generator_proc.sql (RUN AS DATA_ADMIN)
+        Utility to generate contracts from existing tables
+        
+Step 10: 10_demo_sample_data.sql (RUN AS DATA_ADMIN)
+         Loads sample data for observability demo
+         
+CLEANUP: 99_cleanup_demo.sql (RUN AS ACCOUNTADMIN)
+         Removes all demo objects
+*/
+-- ============================================================================
+
+-- ═══════════════════════════════════════════════════════════════════════════
+-- PRE-FLIGHT CHECK
+-- ═══════════════════════════════════════════════════════════════════════════
+
+USE ROLE ACCOUNTADMIN;
+
+-- Verify sample data access (required for this demo)
+SELECT 'TPCH Sample Data Check' AS CHECK_NAME,
+       COUNT(*) AS ROW_COUNT,
+       CASE WHEN COUNT(*) > 0 THEN '✓ PASS' ELSE '✗ FAIL - Enable SNOWFLAKE_SAMPLE_DATA' END AS STATUS
+FROM SNOWFLAKE_SAMPLE_DATA.TPCH_SF1.CUSTOMER
+LIMIT 1;
 
 -- ═══════════════════════════════════════════════════════════════════════════
 -- PART 1: ROLES AND HIERARCHY
 -- ═══════════════════════════════════════════════════════════════════════════
-
-USE ROLE ACCOUNTADMIN;
 
 -- ─────────────────────────────────────────────────────────────────────────────
 -- ROLE HIERARCHY
