@@ -368,7 +368,7 @@ $$
     return 'Created ' + consumer_count + ' approval requests for contract ' + P_CONTRACT_ID;
 $$;
 
-COMMENT ON PROCEDURE NOTIFY_BREAKING_CHANGE(VARCHAR, VARCHAR, VARCHAR, INT) IS 
+COMMENT ON PROCEDURE NOTIFY_BREAKING_CHANGE(VARCHAR, VARCHAR, VARCHAR, FLOAT) IS 
 'Creates approval requests for all consumers when a breaking change is introduced.';
 
 -- ═══════════════════════════════════════════════════════════════════════════
