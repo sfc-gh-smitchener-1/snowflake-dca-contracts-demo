@@ -39,6 +39,12 @@ The contract-first architecture provides the foundation for **trustworthy AI age
 │                         AI AGENT ARCHITECTURE                               │
 ├─────────────────────────────────────────────────────────────────────────────┤
 │                                                                             │
+│  ┌───────────────────────────────────────────────────────────────────────┐  │
+│  │                   🤖 STREAMLIT APP (Cortex Analyst)                   │  │
+│  │         Natural Language Interface • Chat UI • Results Display        │  │
+│  └───────────────────────────────────────────────────────────────────────┘  │
+│                                    │                                        │
+│                                    ▼                                        │
 │  ┌─────────────┐    ┌─────────────────┐    ┌─────────────────────────────┐  │
 │  │   USER      │    │  CORTEX ANALYST │    │    SEMANTIC LAYER           │  │
 │  │   QUERY     │───▶│  + LLM          │───▶│    (AI-Safe Views)          │  │
@@ -118,11 +124,24 @@ This demo showcases a **contract-first data architecture** in Snowflake, impleme
 │  │  • Governance Tags       • Consumer Registry • Breaking Changes       │  │
 │  └───────────────────────────────────────────────────────────────────────┘  │
 │                                    │                                        │
-│                                    ▼                                        │
+│         ┌──────────────────────────┼──────────────────────────┐             │
+│         ▼                          ▼                          ▼             │
+│  ┌─────────────────┐    ┌───────────────────┐    ┌─────────────────────┐   │
+│  │ 🔮 HORIZON      │    │ 🤖 CORTEX         │    │  OBSERVABILITY      │   │
+│  │    DASHBOARD    │    │    ANALYST        │    │  VIEWS              │   │
+│  │                 │    │                   │    │                     │   │
+│  │ • Stoplights    │    │ • Natural Lang    │    │ • VW_DASHBOARD_KPIS │   │
+│  │ • Health KPIs   │    │ • Semantic Models │    │ • VW_CONTRACT_HEALTH│   │
+│  │ • Tag Coverage  │    │ • Query Results   │    │ • VW_SLA_COMPLIANCE │   │
+│  └─────────────────┘    └───────────────────┘    └─────────────────────┘   │
+│         │                          │                                        │
+│         └──────────────────────────┘                                        │
+│                          │                                                  │
+│                          ▼                                                  │
 │  ┌───────────────────────────────────────────────────────────────────────┐  │
-│  │                     OBSERVABILITY DASHBOARD                           │  │
-│  │  • Contract Health    • SLA Compliance    • Quality Scores            │  │
-│  │  • Active Alerts      • Lineage Graph     • Tag Coverage              │  │
+│  │               ❄️ STREAMLIT IN SNOWFLAKE APPLICATION                   │  │
+│  │  • Cortex Analyst Chat    • Horizon Dashboard    • Contract Explorer  │  │
+│  │  • Natural Language UI    • Stoplight Metrics    • Governance Views   │  │
 │  └───────────────────────────────────────────────────────────────────────┘  │
 │                                                                             │
 └─────────────────────────────────────────────────────────────────────────────┘

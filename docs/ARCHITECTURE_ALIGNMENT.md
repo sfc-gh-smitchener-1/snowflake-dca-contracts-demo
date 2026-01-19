@@ -136,6 +136,61 @@ ai_constraints:
 
 ---
 
+## Streamlit in Snowflake Application
+
+The demo includes a fully-featured **Streamlit in Snowflake** application (`streamlit/data_contracts_app.py`) that brings together all capabilities:
+
+### Application Architecture
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                    STREAMLIT IN SNOWFLAKE APPLICATION                       │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                             │
+│  ┌─────────────────────────────────────────────────────────────────────┐    │
+│  │                         SIDEBAR NAVIGATION                          │    │
+│  │  ❄️ Logo • Quick Stats • Page Selection                            │    │
+│  └─────────────────────────────────────────────────────────────────────┘    │
+│                                                                             │
+│  ┌─────────────────┐  ┌─────────────────┐  ┌─────────────────┐              │
+│  │ 🤖 CORTEX       │  │ 🔮 HORIZON      │  │ 📊 CONTRACT     │              │
+│  │    ANALYST      │  │    DASHBOARD    │  │    DETAILS      │              │
+│  │                 │  │                 │  │                 │              │
+│  │ • Chat UI       │  │ • Stoplights    │  │ • Selector      │              │
+│  │ • Model Select  │  │ • KPI Cards     │  │ • Consumers     │              │
+│  │ • Sample Qs     │  │ • Trend Charts  │  │ • Quality Rules │              │
+│  │ • Results DF    │  │ • Alert List    │  │ • YAML View     │              │
+│  └─────────────────┘  └─────────────────┘  └─────────────────┘              │
+│                                    │                                        │
+│                                    ▼                                        │
+│  ┌─────────────────────────────────────────────────────────────────────┐    │
+│  │                    OBSERVABILITY VIEWS                              │    │
+│  │  VW_DASHBOARD_KPIS • VW_CONTRACT_HEALTH • VW_SLA_COMPLIANCE_TREND   │    │
+│  │  VW_ACTIVE_ALERTS • VW_TAG_COVERAGE • VW_QUALITY_RULE_RESULTS       │    │
+│  └─────────────────────────────────────────────────────────────────────┘    │
+│                                                                             │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
+
+### Key Features
+
+| Tab | Purpose | Data Sources |
+|-----|---------|--------------|
+| **🤖 Cortex Analyst** | Natural language queries | Semantic models in stage |
+| **🔮 Horizon Dashboard** | Governance health monitoring | Observability views |
+| **📊 Contract Details** | Contract exploration | Contract registry tables |
+| **ℹ️ About** | Architecture overview | Static content |
+
+### Visual Design Elements
+
+- **Snowflake Blue** (`#29B5E8`) - Primary branding color
+- **Horizon Purple** (`#7C3AED`) - Gradient accents for governance
+- **Stoplight Indicators** - 🟢🟡🔴 for health status
+- **Dark Theme** - Modern, professional appearance
+- **Custom CSS** - Branded cards, chat bubbles, metrics
+
+---
+
 ## Snowflake Cortex AI Capabilities
 
 This demo is designed to work with the full Snowflake Cortex AI platform:
@@ -151,6 +206,8 @@ SELECT SNOWFLAKE.CORTEX.ANALYST(
     '@SEM_DEV.SEM_SALES.SEMANTIC_MODELS/sales_analytics_model.yaml'
 );
 ```
+
+The Streamlit app's **Cortex Analyst** tab provides an interactive chat interface for these queries.
 
 ### Cortex LLM Functions
 

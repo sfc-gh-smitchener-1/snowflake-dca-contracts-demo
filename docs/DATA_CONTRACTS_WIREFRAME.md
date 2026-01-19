@@ -1072,6 +1072,67 @@ flowchart TB
     OBSERVE --> API
 ```
 
+### Streamlit in Snowflake Application
+
+The demo includes a production-ready **Streamlit in Snowflake** application that combines all capabilities:
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                  ❄️ STREAMLIT IN SNOWFLAKE APPLICATION                      │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                             │
+│  SIDEBAR                   MAIN CONTENT AREA                                │
+│  ┌──────────┐             ┌─────────────────────────────────────────────┐   │
+│  │ ❄️ Logo  │             │                                             │   │
+│  │          │             │  🤖 CORTEX ANALYST                          │   │
+│  │ Quick    │             │  ┌─────────────────────────────────────┐    │   │
+│  │ Stats    │             │  │ Select Semantic Model: [▼ sales]    │    │   │
+│  │ ┌──────┐ │             │  └─────────────────────────────────────┘    │   │
+│  │ │ 5   │ │             │                                             │   │
+│  │ │Ctrct │ │             │  💬 Chat History                           │   │
+│  │ └──────┘ │             │  ┌─────────────────────────────────────┐    │   │
+│  │ ┌──────┐ │             │  │ You: What was revenue last quarter? │    │   │
+│  │ │ 95% │ │             │  │                                     │    │   │
+│  │ │Health│ │             │  │ 🤖: Query executed:                 │    │   │
+│  │ └──────┘ │             │  │     SELECT SUM(revenue)...          │    │   │
+│  │          │             │  │                                     │    │   │
+│  │ ─────────│             │  │     [Results Table: $1.2M]          │    │   │
+│  │          │             │  └─────────────────────────────────────┘    │   │
+│  │ 🤖 Cortex│             │                                             │   │
+│  │ 🔮 Horiz │             │  [Ask a question about your data...]       │   │
+│  │ 📊 Detail│             │                                             │   │
+│  │ ℹ️ About │             └─────────────────────────────────────────────┘   │
+│  │          │                                                               │
+│  └──────────┘             ┌─────────────────────────────────────────────┐   │
+│                           │  🔮 HORIZON DASHBOARD                       │   │
+│                           │                                             │   │
+│                           │  🚦 SYSTEM HEALTH                           │   │
+│                           │  ┌──────┐ ┌──────┐ ┌──────┐ ┌──────┐        │   │
+│                           │  │ 🟢   │ │ 🟢   │ │ 🟡   │ │ 🟢   │        │   │
+│                           │  │ 95%  │ │ 98%  │ │ 87%  │ │  0   │        │   │
+│                           │  │Health│ │ SLA  │ │Quality│ │Alerts│        │   │
+│                           │  └──────┘ └──────┘ └──────┘ └──────┘        │   │
+│                           │                                             │   │
+│                           │  📈 SLA Trend    🏷️ Tag Coverage            │   │
+│                           │  ┌───────────┐   ┌───────────┐              │   │
+│                           │  │  ╱╲__╱╲   │   │ ████ 100% │              │   │
+│                           │  │ ╱      ╲  │   │ ███  85%  │              │   │
+│                           │  │╱        ╲ │   │ ██   70%  │              │   │
+│                           │  └───────────┘   └───────────┘              │   │
+│                           │                                             │   │
+│                           │  📋 Contract Health Table                   │   │
+│                           │  ┌─────────────────────────────────────┐    │   │
+│                           │  │ Status │ Contract │ Health │ SLA    │    │   │
+│                           │  │   🟢   │ tpch_v1  │  95%   │  OK    │    │   │
+│                           │  │   🟡   │ crm_v1   │  78%   │ WARN   │    │   │
+│                           │  └─────────────────────────────────────┘    │   │
+│                           └─────────────────────────────────────────────┘   │
+│                                                                             │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
+
+**Deployment**: `sql/12_streamlit_app.sql` creates the app; upload `streamlit/data_contracts_app.py` to the stage.
+
 ### Contract Registry Database Schema
 
 ```sql
@@ -1532,10 +1593,10 @@ flowchart TB
 4. ☐ Implement alerting integration
 
 ### Phase 5: UI/UX (Weeks 17-20)
-1. ☐ Build contract management web UI
+1. ☑ Build contract management web UI → **Streamlit in Snowflake app** (`streamlit/data_contracts_app.py`)
 2. ☐ Implement lineage visualization
-3. ☐ Create self-service consumer portal
-4. ☐ Deploy to internal marketplace
+3. ☑ Create self-service consumer portal → **Cortex Analyst chat interface**
+4. ☑ Deploy to internal marketplace → **Streamlit app deployed via `12_streamlit_app.sql`**
 
 ---
 
