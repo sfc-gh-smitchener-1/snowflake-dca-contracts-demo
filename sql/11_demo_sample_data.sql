@@ -176,6 +176,10 @@ VALUES
 -- VERIFICATION
 -- ─────────────────────────────────────────────────────────────────────────────
 
+-- Reset database context after generator functions
+USE DATABASE GOVERNANCE;
+USE SCHEMA CONTRACT_REGISTRY;
+
 SELECT 'Demo Sample Data Loaded Successfully' AS STATUS;
 
 -- Show contract counts
