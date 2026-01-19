@@ -67,7 +67,7 @@ Step 8: 08_observability_dashboard.sql (RUN AS DATA_ADMIN)
 Step 9: 09_contract_generator_proc.sql (RUN AS DATA_ADMIN)
         - Utility to generate contracts from existing tables
         
-Step 10: 11_demo_sample_data.sql (RUN AS DATA_ADMIN)
+Step 10: 10_demo_sample_data.sql (RUN AS DATA_ADMIN)
          - Loads sample data for observability demo
          
 CLEANUP:
