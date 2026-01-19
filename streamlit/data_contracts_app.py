@@ -24,125 +24,247 @@ st.set_page_config(
 )
 
 # ============================================================================
-# SNOWFLAKE STYLING
+# SNOWFLAKE LIGHT THEME STYLING
 # ============================================================================
 
-# Snowflake brand colors
+# Snowflake brand colors - Light theme with dark accents
 SNOWFLAKE_BLUE = "#29B5E8"
-SNOWFLAKE_DARK_BLUE = "#1E3A5F"
-SNOWFLAKE_LIGHT_BLUE = "#E8F4F8"
-HORIZON_PURPLE = "#7C3AED"
-HORIZON_GRADIENT = "linear-gradient(135deg, #7C3AED 0%, #29B5E8 100%)"
+SNOWFLAKE_DARK_BLUE = "#11567F"
+SNOWFLAKE_LIGHT_BLUE = "#E3F5FC"
+HORIZON_PURPLE = "#6E56CF"
+SUCCESS_GREEN = "#18794E"
+WARNING_AMBER = "#AD5700"
+ERROR_RED = "#CD2B31"
 
-# Custom CSS for Snowflake branding
+# Custom CSS for Snowflake branding - LIGHT THEME
 st.markdown("""
 <style>
-    /* Main app styling */
+    /* Import clean font */
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+    
+    /* Main app styling - Light background */
     .stApp {
-        background: linear-gradient(180deg, #0E1117 0%, #1A1F2E 100%);
+        background: linear-gradient(180deg, #FFFFFF 0%, #F0F9FF 100%);
+        font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
     }
     
-    /* Sidebar styling */
+    /* Sidebar styling - Snowflake blue gradient */
     [data-testid="stSidebar"] {
-        background: linear-gradient(180deg, #1E3A5F 0%, #0E1117 100%);
+        background: linear-gradient(180deg, #11567F 0%, #0D3D5C 100%);
+    }
+    
+    [data-testid="stSidebar"] * {
+        color: white !important;
     }
     
     [data-testid="stSidebar"] .stRadio label {
-        color: white;
+        color: white !important;
         font-weight: 500;
     }
     
-    /* Header styling */
+    [data-testid="stSidebar"] .stMetric label {
+        color: rgba(255,255,255,0.7) !important;
+    }
+    
+    [data-testid="stSidebar"] .stMetric [data-testid="stMetricValue"] {
+        color: white !important;
+    }
+    
+    /* Header styling - Cortex */
     .main-header {
-        background: linear-gradient(135deg, #29B5E8 0%, #1E3A5F 100%);
+        background: linear-gradient(135deg, #29B5E8 0%, #11567F 100%);
         padding: 1.5rem 2rem;
-        border-radius: 12px;
-        margin-bottom: 2rem;
+        border-radius: 16px;
+        margin-bottom: 1.5rem;
         color: white;
+        box-shadow: 0 4px 20px rgba(41, 181, 232, 0.3);
     }
     
     .main-header h1 {
         margin: 0;
-        font-size: 2rem;
+        font-size: 1.75rem;
         font-weight: 700;
+        letter-spacing: -0.02em;
     }
     
     .main-header p {
         margin: 0.5rem 0 0 0;
         opacity: 0.9;
+        font-size: 0.95rem;
     }
     
-    /* Horizon header */
+    /* Horizon header - Purple gradient */
     .horizon-header {
-        background: linear-gradient(135deg, #7C3AED 0%, #29B5E8 100%);
+        background: linear-gradient(135deg, #6E56CF 0%, #29B5E8 100%);
         padding: 1.5rem 2rem;
-        border-radius: 12px;
-        margin-bottom: 2rem;
+        border-radius: 16px;
+        margin-bottom: 1.5rem;
         color: white;
+        box-shadow: 0 4px 20px rgba(110, 86, 207, 0.3);
     }
     
-    /* Metric cards */
+    .horizon-header h1 {
+        margin: 0;
+        font-size: 1.75rem;
+        font-weight: 700;
+    }
+    
+    .horizon-header p {
+        margin: 0.5rem 0 0 0;
+        opacity: 0.9;
+    }
+    
+    /* Metric cards - Light with colored borders */
     .metric-card {
-        background: #1E2530;
+        background: white;
         border-radius: 12px;
-        padding: 1.5rem;
+        padding: 1.25rem;
         border-left: 4px solid #29B5E8;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+        margin-bottom: 0.5rem;
     }
     
-    .metric-card.success { border-left-color: #10B981; }
-    .metric-card.warning { border-left-color: #F59E0B; }
-    .metric-card.error { border-left-color: #EF4444; }
+    .metric-card.success { border-left-color: #18794E; }
+    .metric-card.warning { border-left-color: #AD5700; }
+    .metric-card.error { border-left-color: #CD2B31; }
+    
+    .metric-card strong {
+        color: #64748B;
+        font-size: 0.8rem;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+    }
+    
+    .metric-card h2 {
+        color: #0F172A !important;
+        margin: 0.5rem 0 0 0;
+        font-size: 1.75rem;
+        font-weight: 700;
+    }
     
     /* Stoplight indicators */
     .stoplight {
         display: inline-block;
-        width: 16px;
-        height: 16px;
+        width: 14px;
+        height: 14px;
         border-radius: 50%;
         margin-right: 8px;
+        vertical-align: middle;
     }
     
-    .stoplight.green { background: #10B981; box-shadow: 0 0 8px #10B981; }
-    .stoplight.yellow { background: #F59E0B; box-shadow: 0 0 8px #F59E0B; }
-    .stoplight.red { background: #EF4444; box-shadow: 0 0 8px #EF4444; }
+    .stoplight.green { background: #18794E; box-shadow: 0 0 8px rgba(24,121,78,0.5); }
+    .stoplight.yellow { background: #AD5700; box-shadow: 0 0 8px rgba(173,87,0,0.5); }
+    .stoplight.red { background: #CD2B31; box-shadow: 0 0 8px rgba(205,43,49,0.5); }
     
-    /* Chat styling */
+    /* Chat styling - Light theme */
     .chat-message {
-        padding: 1rem;
+        padding: 1rem 1.25rem;
         border-radius: 12px;
         margin-bottom: 1rem;
+        line-height: 1.5;
     }
     
     .chat-message.user {
-        background: #29B5E8;
+        background: linear-gradient(135deg, #29B5E8 0%, #11567F 100%);
         color: white;
-        margin-left: 20%;
+        margin-left: 15%;
+        box-shadow: 0 2px 8px rgba(41, 181, 232, 0.3);
     }
     
     .chat-message.assistant {
-        background: #1E2530;
+        background: white;
+        color: #0F172A;
+        margin-right: 15%;
+        border: 1px solid #E2E8F0;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+    }
+    
+    .chat-message strong {
+        display: block;
+        margin-bottom: 0.5rem;
+        font-weight: 600;
+    }
+    
+    /* Section headers */
+    .section-header {
+        color: #0F172A;
+        font-size: 1.1rem;
+        font-weight: 600;
+        margin: 1.5rem 0 1rem 0;
+        padding-bottom: 0.5rem;
+        border-bottom: 2px solid #E2E8F0;
+    }
+    
+    /* Data tables */
+    .stDataFrame {
+        border-radius: 12px;
+        overflow: hidden;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+    }
+    
+    /* Buttons */
+    .stButton > button {
+        background: linear-gradient(135deg, #29B5E8 0%, #11567F 100%);
         color: white;
-        margin-right: 20%;
-        border: 1px solid #29B5E8;
+        border: none;
+        border-radius: 8px;
+        font-weight: 500;
+        transition: all 0.2s ease;
+    }
+    
+    .stButton > button:hover {
+        box-shadow: 0 4px 12px rgba(41, 181, 232, 0.4);
+        transform: translateY(-1px);
+    }
+    
+    /* Sample question buttons */
+    .sample-btn {
+        background: white !important;
+        color: #11567F !important;
+        border: 1px solid #E2E8F0 !important;
+        border-radius: 8px;
+        padding: 0.75rem 1rem;
+        text-align: left;
+        transition: all 0.2s ease;
+    }
+    
+    .sample-btn:hover {
+        border-color: #29B5E8 !important;
+        background: #F0F9FF !important;
+    }
+    
+    /* Expander styling */
+    .streamlit-expanderHeader {
+        background: white;
+        border-radius: 8px;
+    }
+    
+    /* Info/Success boxes */
+    .stAlert {
+        border-radius: 8px;
     }
     
     /* Hide Streamlit branding */
     #MainMenu {visibility: hidden;}
     footer {visibility: hidden;}
     
-    /* Custom scrollbar */
+    /* Custom scrollbar - Light theme */
     ::-webkit-scrollbar {
         width: 8px;
         height: 8px;
     }
     
     ::-webkit-scrollbar-track {
-        background: #1E2530;
+        background: #F1F5F9;
     }
     
     ::-webkit-scrollbar-thumb {
-        background: #29B5E8;
+        background: #CBD5E1;
         border-radius: 4px;
+    }
+    
+    ::-webkit-scrollbar-thumb:hover {
+        background: #94A3B8;
     }
 </style>
 """, unsafe_allow_html=True)
@@ -263,11 +385,7 @@ def run_cortex_analyst(question: str, model_path: str) -> tuple:
     """Run Cortex Analyst query - returns (response_text, sql_query, result_df)"""
     session = get_session()
     try:
-        # Build the stage path
-        stage_path = f"@SEM_DEV.SEM_SALES.SEMANTIC_MODELS/{model_path}"
-        
-        # Call Cortex Analyst function
-        # Note: In production, use SNOWFLAKE.CORTEX.ANALYST() function
+        # Call Cortex Complete function
         result = session.sql(f"""
             SELECT SNOWFLAKE.CORTEX.COMPLETE(
                 'llama3.1-70b',
@@ -297,14 +415,14 @@ def run_cortex_analyst(question: str, model_path: str) -> tuple:
                     
                     # Execute the query
                     df = session.sql(sql).to_pandas()
-                    return (f"Query executed successfully:\n```sql\n{sql}\n```", sql, df)
+                    return (f"✅ Query executed successfully", sql, df)
                 except Exception as e:
-                    return (f"Generated SQL (execution failed):\n{response}\n\nError: {str(e)}", None, None)
+                    return (f"Generated SQL:\n```\n{response}\n```\n\n⚠️ Execution error: {str(e)}", None, None)
             
             return (response, None, None)
         return ("No response generated", None, None)
     except Exception as e:
-        return (f"Error: {str(e)}", None, None)
+        return (f"❌ Error: {str(e)}", None, None)
 
 # ============================================================================
 # SIDEBAR
@@ -313,12 +431,12 @@ def run_cortex_analyst(question: str, model_path: str) -> tuple:
 def render_sidebar():
     """Render the sidebar navigation"""
     with st.sidebar:
-        # Snowflake logo placeholder
+        # Snowflake logo and title
         st.markdown("""
-        <div style="text-align: center; padding: 1rem 0 2rem 0;">
-            <h1 style="color: #29B5E8; font-size: 2.5rem; margin: 0;">❄️</h1>
-            <h2 style="color: white; font-size: 1.2rem; margin: 0.5rem 0 0 0;">Data Contracts</h2>
-            <p style="color: #29B5E8; font-size: 0.8rem; margin: 0;">Enterprise Demo</p>
+        <div style="text-align: center; padding: 1rem 0 1.5rem 0;">
+            <div style="font-size: 3rem; margin-bottom: 0.5rem;">❄️</div>
+            <h2 style="color: white; font-size: 1.3rem; margin: 0; font-weight: 700;">Data Contracts</h2>
+            <p style="color: #29B5E8; font-size: 0.85rem; margin: 0.25rem 0 0 0;">Enterprise Demo</p>
         </div>
         """, unsafe_allow_html=True)
         
@@ -341,22 +459,28 @@ def render_sidebar():
             col1, col2 = st.columns(2)
             with col1:
                 if 'TOTAL_CONTRACTS' in kpis.columns:
-                    st.metric("Contracts", kpis['TOTAL_CONTRACTS'].iloc[0])
+                    val = kpis['TOTAL_CONTRACTS'].iloc[0]
+                    st.metric("Contracts", int(val) if pd.notna(val) else 0)
                 if 'ACTIVE_ALERTS' in kpis.columns:
-                    st.metric("Alerts", kpis['ACTIVE_ALERTS'].iloc[0])
+                    val = kpis['ACTIVE_ALERTS'].iloc[0]
+                    st.metric("Alerts", int(val) if pd.notna(val) else 0)
             with col2:
                 if 'OVERALL_HEALTH_PCT' in kpis.columns:
-                    st.metric("Health", f"{kpis['OVERALL_HEALTH_PCT'].iloc[0]:.0f}%")
+                    val = kpis['OVERALL_HEALTH_PCT'].iloc[0]
+                    st.metric("Health", f"{val:.0f}%" if pd.notna(val) else "N/A")
                 if 'SLA_COMPLIANCE_PCT' in kpis.columns:
-                    st.metric("SLA", f"{kpis['SLA_COMPLIANCE_PCT'].iloc[0]:.0f}%")
+                    val = kpis['SLA_COMPLIANCE_PCT'].iloc[0]
+                    st.metric("SLA", f"{val:.0f}%" if pd.notna(val) else "N/A")
+        else:
+            st.info("Loading stats...")
         
         st.divider()
         
         # Footer
         st.markdown("""
-        <div style="text-align: center; color: #666; font-size: 0.75rem;">
-            <p>Powered by</p>
-            <p style="color: #29B5E8;">Snowflake Horizon + Cortex</p>
+        <div style="text-align: center; padding-top: 1rem;">
+            <p style="color: rgba(255,255,255,0.6); font-size: 0.75rem; margin: 0;">Powered by</p>
+            <p style="color: #29B5E8; font-size: 0.85rem; margin: 0.25rem 0 0 0; font-weight: 500;">Snowflake Horizon + Cortex</p>
         </div>
         """, unsafe_allow_html=True)
         
@@ -378,7 +502,7 @@ def render_cortex_page():
     """, unsafe_allow_html=True)
     
     # Model selector
-    col1, col2 = st.columns([2, 1])
+    col1, col2 = st.columns([3, 1])
     with col1:
         models = get_semantic_models()
         selected_model = st.selectbox(
@@ -387,10 +511,9 @@ def render_cortex_page():
             help="Choose which semantic model to query"
         )
     with col2:
-        st.markdown("<br>", unsafe_allow_html=True)
-        if st.button("🔄 Refresh Models"):
+        st.write("")  # Spacing
+        if st.button("🔄 Refresh", use_container_width=True):
             st.cache_data.clear()
-            st.rerun()
     
     st.divider()
     
@@ -401,9 +524,10 @@ def render_cortex_page():
     # Display chat history
     for message in st.session_state.messages:
         role_class = "user" if message["role"] == "user" else "assistant"
+        icon = "👤" if role_class == "user" else "🤖"
         st.markdown(f"""
         <div class="chat-message {role_class}">
-            <strong>{'You' if role_class == 'user' else '🤖 Cortex'}</strong><br>
+            <strong>{icon} {'You' if role_class == 'user' else 'Cortex'}</strong>
             {message["content"]}
         </div>
         """, unsafe_allow_html=True)
@@ -461,54 +585,56 @@ def render_cortex_page():
             with cols[i % 2]:
                 if st.button(f"💬 {q}", key=f"sample_{i}", use_container_width=True):
                     st.session_state.pending_question = q
-                    st.rerun()
     
-    # Chat input (using text_input for Snowflake Streamlit compatibility)
+    # Chat input
     st.divider()
     
-    # Handle pending question from sample buttons
-    if "pending_question" in st.session_state:
-        user_question = st.session_state.pending_question
+    # Check for pending question from sample buttons
+    pending_q = st.session_state.get("pending_question", None)
+    if pending_q:
         del st.session_state.pending_question
-    else:
+        process_question(pending_q, selected_model)
+    
+    # Input form
+    with st.form(key="question_form", clear_on_submit=True):
         col1, col2 = st.columns([5, 1])
         with col1:
             user_question = st.text_input(
-                "Ask a question about your data...",
-                key="user_input",
-                label_visibility="collapsed",
-                placeholder="Ask a question about your data..."
+                "Question",
+                placeholder="Ask a question about your data...",
+                label_visibility="collapsed"
             )
         with col2:
-            submit = st.button("🚀 Ask", use_container_width=True)
-            if not submit:
-                user_question = None
-    
-    if user_question:
-        # Add user message
-        st.session_state.messages.append({"role": "user", "content": user_question})
+            submit = st.form_submit_button("🚀 Ask", use_container_width=True)
         
-        # Get response
-        with st.spinner("🤔 Thinking..."):
-            response_text, sql_query, result_df = run_cortex_analyst(user_question, selected_model)
-        
-        # Build response content
-        response_content = response_text
-        
-        # Store both text and dataframe if we have results
-        st.session_state.messages.append({
-            "role": "assistant", 
-            "content": response_content,
-            "df": result_df
-        })
-        
-        st.rerun()
+        if submit and user_question:
+            process_question(user_question, selected_model)
     
     # Clear chat button
     if st.session_state.messages:
         if st.button("🗑️ Clear Chat"):
             st.session_state.messages = []
-            st.rerun()
+
+def process_question(question: str, model: str):
+    """Process a user question"""
+    # Add user message
+    st.session_state.messages.append({"role": "user", "content": question})
+    
+    # Get response
+    with st.spinner("🤔 Thinking..."):
+        response_text, sql_query, result_df = run_cortex_analyst(question, model)
+    
+    # Build response content
+    content = response_text
+    if sql_query:
+        content += f"\n\n```sql\n{sql_query}\n```"
+    
+    # Store response
+    st.session_state.messages.append({
+        "role": "assistant", 
+        "content": content,
+        "df": result_df
+    })
 
 # ============================================================================
 # HORIZON DASHBOARD PAGE
@@ -541,46 +667,50 @@ def render_horizon_dashboard():
     col1, col2, col3, col4 = st.columns(4)
     
     with col1:
-        health_pct = kpis['OVERALL_HEALTH_PCT'].iloc[0] if not kpis.empty and 'OVERALL_HEALTH_PCT' in kpis.columns else 0
+        health_pct = kpis['OVERALL_HEALTH_PCT'].iloc[0] if not kpis.empty and 'OVERALL_HEALTH_PCT' in kpis.columns and pd.notna(kpis['OVERALL_HEALTH_PCT'].iloc[0]) else 0
         stoplight = "green" if health_pct >= 90 else ("yellow" if health_pct >= 70 else "red")
+        card_class = "success" if stoplight == "green" else ("warning" if stoplight == "yellow" else "error")
         st.markdown(f"""
-        <div class="metric-card {'success' if stoplight == 'green' else ('warning' if stoplight == 'yellow' else 'error')}">
+        <div class="metric-card {card_class}">
             <span class="stoplight {stoplight}"></span>
             <strong>Overall Health</strong>
-            <h2 style="color: white; margin: 0.5rem 0;">{health_pct:.1f}%</h2>
+            <h2>{health_pct:.0f}%</h2>
         </div>
         """, unsafe_allow_html=True)
     
     with col2:
-        sla_pct = kpis['SLA_COMPLIANCE_PCT'].iloc[0] if not kpis.empty and 'SLA_COMPLIANCE_PCT' in kpis.columns else 0
+        sla_pct = kpis['SLA_COMPLIANCE_PCT'].iloc[0] if not kpis.empty and 'SLA_COMPLIANCE_PCT' in kpis.columns and pd.notna(kpis['SLA_COMPLIANCE_PCT'].iloc[0]) else 0
         stoplight = "green" if sla_pct >= 95 else ("yellow" if sla_pct >= 80 else "red")
+        card_class = "success" if stoplight == "green" else ("warning" if stoplight == "yellow" else "error")
         st.markdown(f"""
-        <div class="metric-card {'success' if stoplight == 'green' else ('warning' if stoplight == 'yellow' else 'error')}">
+        <div class="metric-card {card_class}">
             <span class="stoplight {stoplight}"></span>
             <strong>SLA Compliance</strong>
-            <h2 style="color: white; margin: 0.5rem 0;">{sla_pct:.1f}%</h2>
+            <h2>{sla_pct:.0f}%</h2>
         </div>
         """, unsafe_allow_html=True)
     
     with col3:
-        quality_pct = kpis['QUALITY_SCORE_PCT'].iloc[0] if not kpis.empty and 'QUALITY_SCORE_PCT' in kpis.columns else 0
+        quality_pct = kpis['QUALITY_SCORE_PCT'].iloc[0] if not kpis.empty and 'QUALITY_SCORE_PCT' in kpis.columns and pd.notna(kpis['QUALITY_SCORE_PCT'].iloc[0]) else 0
         stoplight = "green" if quality_pct >= 95 else ("yellow" if quality_pct >= 80 else "red")
+        card_class = "success" if stoplight == "green" else ("warning" if stoplight == "yellow" else "error")
         st.markdown(f"""
-        <div class="metric-card {'success' if stoplight == 'green' else ('warning' if stoplight == 'yellow' else 'error')}">
+        <div class="metric-card {card_class}">
             <span class="stoplight {stoplight}"></span>
             <strong>Data Quality</strong>
-            <h2 style="color: white; margin: 0.5rem 0;">{quality_pct:.1f}%</h2>
+            <h2>{quality_pct:.0f}%</h2>
         </div>
         """, unsafe_allow_html=True)
     
     with col4:
-        alert_count = kpis['ACTIVE_ALERTS'].iloc[0] if not kpis.empty and 'ACTIVE_ALERTS' in kpis.columns else 0
+        alert_count = int(kpis['ACTIVE_ALERTS'].iloc[0]) if not kpis.empty and 'ACTIVE_ALERTS' in kpis.columns and pd.notna(kpis['ACTIVE_ALERTS'].iloc[0]) else 0
         stoplight = "green" if alert_count == 0 else ("yellow" if alert_count <= 3 else "red")
+        card_class = "success" if stoplight == "green" else ("warning" if stoplight == "yellow" else "error")
         st.markdown(f"""
-        <div class="metric-card {'success' if stoplight == 'green' else ('warning' if stoplight == 'yellow' else 'error')}">
+        <div class="metric-card {card_class}">
             <span class="stoplight {stoplight}"></span>
             <strong>Active Alerts</strong>
-            <h2 style="color: white; margin: 0.5rem 0;">{alert_count}</h2>
+            <h2>{alert_count}</h2>
         </div>
         """, unsafe_allow_html=True)
     
@@ -599,19 +729,15 @@ def render_horizon_dashboard():
             chart_data = chart_data.sort_values('HOUR')
             st.line_chart(chart_data.set_index('HOUR'), color="#29B5E8")
         else:
-            st.info("No SLA trend data available")
+            st.info("📊 No SLA trend data available yet. Run validation procedures to generate metrics.")
     
     with col2:
-        st.markdown("### 🏷️ Tag Coverage by Type")
-        if not tags.empty:
-            # Create a simple bar chart
-            if 'TAG_NAME' in tags.columns and 'COVERAGE_PCT' in tags.columns:
-                chart_data = tags[['TAG_NAME', 'COVERAGE_PCT']].copy()
-                st.bar_chart(chart_data.set_index('TAG_NAME'), color="#7C3AED")
-            else:
-                st.info("No tag coverage data available")
+        st.markdown("### 🏷️ Governance Tag Coverage")
+        if not tags.empty and 'TAG_NAME' in tags.columns and 'COVERAGE_PCT' in tags.columns:
+            chart_data = tags[['TAG_NAME', 'COVERAGE_PCT']].copy()
+            st.bar_chart(chart_data.set_index('TAG_NAME'), color="#6E56CF")
         else:
-            st.info("No tag coverage data available")
+            st.info("🏷️ No tag coverage data available yet. Register contracts to see coverage.")
     
     st.divider()
     
@@ -640,13 +766,16 @@ def render_horizon_dashboard():
                        'FRESHNESS_STATUS', 'CONSUMER_COUNT']
         display_cols = [c for c in display_cols if c in display_df.columns]
         
-        st.dataframe(
-            display_df[display_cols],
-            use_container_width=True,
-            hide_index=True
-        )
+        if display_cols:
+            st.dataframe(
+                display_df[display_cols],
+                use_container_width=True,
+                hide_index=True
+            )
+        else:
+            st.info("📋 Contract health data structure differs from expected. Check observability views.")
     else:
-        st.info("No contract health data available")
+        st.info("📋 No contract health data available yet. Register contracts and run validations.")
     
     st.divider()
     
@@ -659,13 +788,23 @@ def render_horizon_dashboard():
     if not alerts.empty:
         for _, alert in alerts.iterrows():
             severity = alert.get('SEVERITY', 'INFO')
-            icon = "🔴" if severity == 'ERROR' else ("🟡" if severity == 'WARNING' else "🔵")
+            if severity in ['CRITICAL', 'ERROR']:
+                icon = "🔴"
+            elif severity == 'WARNING':
+                icon = "🟡"
+            else:
+                icon = "🔵"
             
-            with st.expander(f"{icon} {alert.get('TITLE', 'Alert')}", expanded=False):
-                st.write(f"**Contract:** {alert.get('CONTRACT_ID', 'N/A')}")
-                st.write(f"**Type:** {alert.get('ALERT_TYPE', 'N/A')}")
+            title = alert.get('TITLE', 'Alert')
+            with st.expander(f"{icon} {title}", expanded=False):
+                col1, col2 = st.columns(2)
+                with col1:
+                    st.write(f"**Contract:** {alert.get('CONTRACT_ID', 'N/A')}")
+                    st.write(f"**Type:** {alert.get('ALERT_TYPE', 'N/A')}")
+                with col2:
+                    st.write(f"**Severity:** {severity}")
+                    st.write(f"**Created:** {alert.get('CREATED_AT', 'N/A')}")
                 st.write(f"**Message:** {alert.get('MESSAGE', 'N/A')}")
-                st.write(f"**Created:** {alert.get('CREATED_AT', 'N/A')}")
     else:
         st.success("✅ No active alerts - all systems healthy!")
 
@@ -706,19 +845,27 @@ def render_contract_details():
         if selected_contract:
             contract_info = contracts_df[contracts_df['CONTRACT_ID'] == selected_contract].iloc[0]
             
+            st.divider()
+            
             col1, col2 = st.columns(2)
             
             with col1:
-                st.markdown("### Contract Information")
-                st.write(f"**ID:** {contract_info['CONTRACT_ID']}")
-                st.write(f"**Type:** {contract_info['CONTRACT_TYPE']}")
-                st.write(f"**Version:** {contract_info['VERSION']}")
-                st.write(f"**Status:** {contract_info['STATUS']}")
-                st.write(f"**Producer:** {contract_info['PRODUCER_SYSTEM']}")
-                st.write(f"**Description:** {contract_info['DESCRIPTION']}")
+                st.markdown("### 📄 Contract Information")
+                st.markdown(f"""
+                | Property | Value |
+                |----------|-------|
+                | **ID** | `{contract_info['CONTRACT_ID']}` |
+                | **Type** | {contract_info['CONTRACT_TYPE']} |
+                | **Version** | {contract_info['VERSION']} |
+                | **Status** | {contract_info['STATUS']} |
+                | **Producer** | {contract_info['PRODUCER_SYSTEM']} |
+                """)
+                
+                if contract_info['DESCRIPTION']:
+                    st.markdown(f"**Description:** {contract_info['DESCRIPTION']}")
             
             with col2:
-                st.markdown("### Consumers")
+                st.markdown("### 👥 Consumers")
                 try:
                     consumers = session.sql(f"""
                         SELECT CONSUMER_SYSTEM, CONSUMER_EMAIL, USE_CASE
@@ -729,14 +876,14 @@ def render_contract_details():
                     if not consumers.empty:
                         st.dataframe(consumers, use_container_width=True, hide_index=True)
                     else:
-                        st.info("No registered consumers")
+                        st.info("No registered consumers for this contract")
                 except:
-                    st.info("Unable to load consumers")
+                    st.info("Unable to load consumer data")
             
             st.divider()
             
             # Quality Rules
-            st.markdown("### Quality Rules")
+            st.markdown("### ✅ Quality Rules")
             try:
                 rules = session.sql(f"""
                     SELECT RULE_ID, RULE_NAME, RULE_TYPE, SEVERITY, ENABLED
@@ -747,11 +894,11 @@ def render_contract_details():
                 if not rules.empty:
                     st.dataframe(rules, use_container_width=True, hide_index=True)
                 else:
-                    st.info("No quality rules defined")
+                    st.info("No quality rules defined for this contract")
             except:
                 st.info("Unable to load quality rules")
     else:
-        st.info("No contracts available")
+        st.info("📋 No active contracts found. Run the demo setup scripts to create contracts.")
 
 # ============================================================================
 # ABOUT PAGE
@@ -767,52 +914,64 @@ def render_about():
     </div>
     """, unsafe_allow_html=True)
     
+    col1, col2 = st.columns(2)
+    
+    with col1:
+        st.markdown("""
+        ### 🔮 Snowflake Horizon
+        
+        This demo leverages Horizon unified governance:
+        
+        - **Object Tagging** — DATA_CLASSIFICATION, PII_TYPE, AI_ALLOWED
+        - **Tag-Based Masking** — Dynamic PII protection at query time
+        - **Access History** — Complete audit trail of data access
+        - **Data Classification** — Automatic sensitivity detection
+        """)
+        
+        st.markdown("""
+        ### 🏗️ Data Architecture
+        
+        - **Three-Layer Design** — RAW → CURATED → SEMANTIC
+        - **Dynamic Tables** — Automated transformation pipelines
+        - **Data Contracts** — Schema, SLAs, quality rules as code
+        - **Observability** — Real-time health monitoring
+        """)
+    
+    with col2:
+        st.markdown("""
+        ### 🤖 Snowflake Cortex
+        
+        AI capabilities for governed data:
+        
+        - **Cortex Analyst** — Natural language to SQL
+        - **LLM Functions** — COMPLETE, SUMMARIZE, TRANSLATE
+        - **ML Functions** — FORECAST, ANOMALY_DETECTION
+        - **Semantic Models** — YAML definitions for each domain
+        """)
+        
+        st.markdown("""
+        ### 📚 Resources
+        
+        - [Snowflake Horizon](https://www.snowflake.com/horizon/)
+        - [Cortex Analyst](https://docs.snowflake.com/en/user-guide/snowflake-cortex/cortex-analyst)
+        - [Dynamic Tables](https://docs.snowflake.com/en/user-guide/dynamic-tables-intro)
+        - [Object Tagging](https://docs.snowflake.com/en/user-guide/object-tagging)
+        """)
+    
+    st.divider()
+    
     st.markdown("""
-    ## 🎯 What This Demo Shows
+    ### 🎯 Architecture Principle
     
-    This application demonstrates a **contract-first data architecture** built on:
+    > *"AI, governance, and automation cannot scale unless business intent is explicit, portable, and enforceable by the data platform itself."*
     
-    ### Snowflake Horizon (Governance)
-    - **Object Tagging** - DATA_CLASSIFICATION, PII_TYPE, AI_ALLOWED tags
-    - **Tag-Based Masking** - Dynamic PII protection
-    - **Access History** - Complete audit trail
-    - **Data Classification** - Automatic sensitivity detection
-    
-    ### Snowflake Cortex (AI)
-    - **Cortex Analyst** - Natural language to SQL
-    - **LLM Functions** - COMPLETE, SUMMARIZE, CLASSIFY
-    - **ML Functions** - FORECAST, ANOMALY_DETECTION
-    - **Semantic Models** - YAML definitions for each domain
-    
-    ### Data Architecture
-    - **Three-Layer Design** - RAW → CURATED → SEMANTIC
-    - **Dynamic Tables** - Automated transformation pipelines
-    - **Data Contracts** - Schema, SLAs, quality rules as code
-    - **Observability** - Real-time health monitoring
-    
-    ---
-    
-    ## 🏗️ Architecture
-    
-    ```
-    People → Data → Governance → Automation
-    ```
+    **Dependency Chain:** `People → Data → Governance → Automation`
     
     Each layer inherits stability from the layer before it.
-    
-    ---
-    
-    ## 📚 Resources
-    
-    - [Snowflake Horizon](https://www.snowflake.com/en/data-cloud/horizon/)
-    - [Cortex Analyst](https://docs.snowflake.com/en/user-guide/snowflake-cortex/cortex-analyst)
-    - [Dynamic Tables](https://docs.snowflake.com/en/user-guide/dynamic-tables-intro)
-    - [Object Tagging](https://docs.snowflake.com/en/user-guide/object-tagging)
-    
-    ---
-    
-    *Built with ❄️ Streamlit in Snowflake*
     """)
+    
+    st.markdown("---")
+    st.markdown("*Built with ❄️ Streamlit in Snowflake*")
 
 # ============================================================================
 # MAIN APP
