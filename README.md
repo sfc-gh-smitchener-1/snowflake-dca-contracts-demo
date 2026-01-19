@@ -132,6 +132,9 @@ This demo showcases a **contract-first data architecture** in Snowflake, impleme
    
    -- Step 10: Roles and Users (Demo Access Control)
    -- Run: sql/10_roles_and_users.sql
+   
+   -- Step 11: Load Sample Data for Demo
+   -- Run: sql/11_demo_sample_data.sql
    ```
 
 6. **Verify the installation**
@@ -179,7 +182,9 @@ snowflake-dca-contracts-demo/
 │   ├── 07_contract_validation.sql
 │   ├── 08_observability_dashboard.sql
 │   ├── 09_contract_generator_proc.sql
-│   └── 10_roles_and_users.sql          # Access control setup
+│   ├── 10_roles_and_users.sql          # Access control setup
+│   ├── 11_demo_sample_data.sql         # Sample data for demo
+│   └── 99_cleanup_demo.sql             # Reset/cleanup script
 │
 ├── semantic_models/                # Cortex Analyst Semantic Models (YAML)
 │   ├── sales_analytics_model.yaml      # Revenue, orders, delivery
@@ -195,9 +200,12 @@ snowflake-dca-contracts-demo/
 │   ├── data_contract_template.yml
 │   └── product_contract_template.yml
 │
-├── tools/                          # Python Utilities
-│   ├── generate_contract.py        # Contract generator
-│   └── validate_contracts.py       # Contract validation
+├── tools/                          # Utilities
+│   ├── generate_contract.py        # Contract generator (Python)
+│   ├── validate_contracts.py       # Contract validation (Python)
+│   ├── upload_semantic_models.py   # Upload models to stage (Python)
+│   ├── upload_semantic_models.sql  # Upload models to stage (SnowSQL)
+│   └── upload_semantic_models_notebook.py  # For Snowflake Notebooks
 │
 ├── docs/                           # Documentation
 │   ├── DATA_CONTRACTS_WIREFRAME.md # Detailed design document

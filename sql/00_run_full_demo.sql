@@ -101,6 +101,7 @@ CREATE WAREHOUSE IF NOT EXISTS ANALYTICS_WH WAREHOUSE_SIZE = 'SMALL' AUTO_SUSPEN
 !print '  6. 08_observability_dashboard.sql - Observability Views';
 !print '  7. 09_contract_generator_proc.sql - Contract Generator';
 !print '  8. 10_roles_and_users.sql       - Access Control Setup';
+!print '  9. 11_demo_sample_data.sql      - Sample Data for Demo';
 !print '';
 
 -- ═══════════════════════════════════════════════════════════════════════════
@@ -118,7 +119,7 @@ SHOW TAGS IN SCHEMA GOVERNANCE.TAGS;
 !print '=== Demo Environment Base Setup Complete ===';
 !print '';
 !print 'Next Steps:';
-!print '1. Run each SQL script in this folder in numbered order (01-09)';
-!print '2. Register contracts from ../contracts/data/*.yml files';
-!print '3. Validate contracts using the validation procedures';
-!print '4. Query observability views for contract health';
+!print '1. Run each SQL script in this folder in numbered order (01-11)';
+!print '2. Upload semantic models: tools/upload_semantic_models.sql';
+!print '3. Query observability views for contract health';
+!print '4. Test Cortex Analyst with the semantic models';
