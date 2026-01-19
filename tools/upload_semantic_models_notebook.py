@@ -37,7 +37,10 @@ description: Sales analytics semantic model for Cortex Analyst
 tables:
   - name: VW_SALES_ANALYTICS
     description: Core sales analytics view with order line items and full dimensional context
-    base_table: SEM_DEV.SEM_SALES.VW_SALES_ANALYTICS
+    base_table:
+      database: SEM_DEV
+      schema: SEM_SALES
+      table: VW_SALES_ANALYTICS
     
     dimensions:
       - name: ORDER_DATE

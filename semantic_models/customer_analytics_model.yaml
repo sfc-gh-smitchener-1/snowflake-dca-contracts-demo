@@ -27,7 +27,10 @@ schema: SEM_CUSTOMER
 tables:
   - name: VW_CUSTOMER_ANALYTICS
     description: Customer analytics view with RFM scoring and segmentation
-    base_table: SEM_DEV.SEM_CUSTOMER.VW_CUSTOMER_ANALYTICS
+    base_table:
+      database: SEM_DEV
+      schema: SEM_CUSTOMER
+      table: VW_CUSTOMER_ANALYTICS
     
     # Dimensions
     dimensions:

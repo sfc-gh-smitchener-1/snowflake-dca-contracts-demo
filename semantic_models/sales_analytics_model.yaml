@@ -26,7 +26,10 @@ schema: SEM_SALES
 tables:
   - name: VW_SALES_ANALYTICS
     description: Core sales analytics view with order line item details
-    base_table: SEM_DEV.SEM_SALES.VW_SALES_ANALYTICS
+    base_table:
+      database: SEM_DEV
+      schema: SEM_SALES
+      table: VW_SALES_ANALYTICS
     
     # Dimensions
     dimensions:

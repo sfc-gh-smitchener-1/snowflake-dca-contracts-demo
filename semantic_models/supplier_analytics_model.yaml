@@ -27,7 +27,10 @@ schema: SEM_SALES
 tables:
   - name: VW_SUPPLIER_ANALYTICS
     description: Supplier performance and quality analytics view
-    base_table: SEM_DEV.SEM_SALES.VW_SUPPLIER_ANALYTICS
+    base_table:
+      database: SEM_DEV
+      schema: SEM_SALES
+      table: VW_SUPPLIER_ANALYTICS
     
     # Dimensions
     dimensions:

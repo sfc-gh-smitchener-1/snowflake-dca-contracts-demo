@@ -31,7 +31,10 @@ tables:
   # ─────────────────────────────────────────────────────────────────────────
   - name: VW_CONTRACT_HEALTH_DASHBOARD
     description: Contract health status with quality scores, SLA compliance, and consumer counts
-    base_table: GOVERNANCE.OBSERVABILITY.VW_CONTRACT_HEALTH_DASHBOARD
+    base_table:
+      database: GOVERNANCE
+      schema: OBSERVABILITY
+      table: VW_CONTRACT_HEALTH_DASHBOARD
     
     dimensions:
       - name: contract_id
@@ -131,7 +134,10 @@ tables:
   # ─────────────────────────────────────────────────────────────────────────
   - name: VW_ACTIVE_ALERTS
     description: Currently active alerts and violations
-    base_table: GOVERNANCE.OBSERVABILITY.VW_ACTIVE_ALERTS
+    base_table:
+      database: GOVERNANCE
+      schema: OBSERVABILITY
+      table: VW_ACTIVE_ALERTS
     
     dimensions:
       - name: contract_id
@@ -209,7 +215,10 @@ tables:
   # ─────────────────────────────────────────────────────────────────────────
   - name: VW_TAG_COVERAGE
     description: Governance tag coverage by contract
-    base_table: GOVERNANCE.OBSERVABILITY.VW_TAG_COVERAGE
+    base_table:
+      database: GOVERNANCE
+      schema: OBSERVABILITY
+      table: VW_TAG_COVERAGE
     
     dimensions:
       - name: contract_id
@@ -253,7 +262,10 @@ tables:
   # ─────────────────────────────────────────────────────────────────────────
   - name: VW_SLA_COMPLIANCE_TREND
     description: SLA compliance metrics over time
-    base_table: GOVERNANCE.OBSERVABILITY.VW_SLA_COMPLIANCE_TREND
+    base_table:
+      database: GOVERNANCE
+      schema: OBSERVABILITY
+      table: VW_SLA_COMPLIANCE_TREND
     
     dimensions:
       - name: metric_date
@@ -287,7 +299,10 @@ tables:
   # ─────────────────────────────────────────────────────────────────────────
   - name: VW_DASHBOARD_KPIS
     description: High-level governance KPIs
-    base_table: GOVERNANCE.OBSERVABILITY.VW_DASHBOARD_KPIS
+    base_table:
+      database: GOVERNANCE
+      schema: OBSERVABILITY
+      table: VW_DASHBOARD_KPIS
     
     dimensions:
       - name: kpi_name
