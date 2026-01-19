@@ -43,7 +43,7 @@ LIMIT 1;
 -- STEP 1: Contract Registry Setup (from 01_contract_registry_setup.sql)
 -- ═══════════════════════════════════════════════════════════════════════════
 
-!print '=== STEP 1: Setting up Contract Registry ===';
+--  '=== STEP 1: Setting up Contract Registry ===';
 
 -- Run the contract registry setup
 -- NOTE: In actual execution, you would run each script file
@@ -52,7 +52,7 @@ LIMIT 1;
 -- STEP 2: TPCH Demo Environment Setup (from 02_tpch_demo_setup.sql)
 -- ═══════════════════════════════════════════════════════════════════════════
 
-!print '=== STEP 2: Creating Demo Environment ===';
+--  '=== STEP 2: Creating Demo Environment ===';
 
 -- Create databases for three-layer architecture
 CREATE DATABASE IF NOT EXISTS RAW_DEV COMMENT = 'Raw data layer';
@@ -91,18 +91,18 @@ CREATE WAREHOUSE IF NOT EXISTS ANALYTICS_WH WAREHOUSE_SIZE = 'SMALL' AUTO_SUSPEN
 -- STEP 3: Execute remaining setup scripts
 -- ═══════════════════════════════════════════════════════════════════════════
 
-!print '=== STEP 3: Run the following scripts in order ===';
-!print '';
-!print '  1. 03_raw_layer_tables.sql      - Create RAW layer tables';
-!print '  2. 04_direct_load_tpch.sql      - Load TPCH data';
-!print '  3. 05_curated_layer_dynamic_tables.sql - Create Dynamic Tables';
-!print '  4. 06_semantic_layer.sql        - Create Semantic Views';
-!print '  5. 07_contract_validation.sql   - Validation Procedures';
-!print '  6. 08_observability_dashboard.sql - Observability Views';
-!print '  7. 09_contract_generator_proc.sql - Contract Generator';
-!print '  8. 10_roles_and_users.sql       - Access Control Setup';
-!print '  9. 11_demo_sample_data.sql      - Sample Data for Demo';
-!print '';
+--  '=== STEP 3: Run the following scripts in order ===';
+--  '';
+--  '  1. 03_raw_layer_tables.sql      - Create RAW layer tables';
+--  '  2. 04_direct_load_tpch.sql      - Load TPCH data';
+--  '  3. 05_curated_layer_dynamic_tables.sql - Create Dynamic Tables';
+--  '  4. 06_semantic_layer.sql        - Create Semantic Views';
+--  '  5. 07_contract_validation.sql   - Validation Procedures';
+--  '  6. 08_observability_dashboard.sql - Observability Views';
+--  '  7. 09_contract_generator_proc.sql - Contract Generator';
+--  '  8. 10_roles_and_users.sql       - Access Control Setup';
+--  '  9. 11_demo_sample_data.sql      - Sample Data for Demo';
+--  '';
 
 -- ═══════════════════════════════════════════════════════════════════════════
 -- QUICK VERIFICATION QUERIES
@@ -116,10 +116,10 @@ WHERE DATABASE_NAME IN ('RAW_DEV', 'CURATED_DEV', 'SEM_DEV', 'GOVERNANCE');
 -- Check tags created
 SHOW TAGS IN SCHEMA GOVERNANCE.TAGS;
 
-!print '=== Demo Environment Base Setup Complete ===';
-!print '';
-!print 'Next Steps:';
-!print '1. Run each SQL script in this folder in numbered order (01-11)';
-!print '2. Upload semantic models: tools/upload_semantic_models.sql';
-!print '3. Query observability views for contract health';
-!print '4. Test Cortex Analyst with the semantic models';
+--  '=== Demo Environment Base Setup Complete ===';
+--  '';
+--  'Next Steps:';
+--  '1. Run each SQL script in this folder in numbered order (01-11)';
+--  '2. Upload semantic models: tools/upload_semantic_models.sql';
+--  '3. Query observability views for contract health';
+--  '4. Test Cortex Analyst with the semantic models';
