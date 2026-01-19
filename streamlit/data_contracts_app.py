@@ -395,7 +395,7 @@ def get_default_semantic_views():
         'SEM_DEV.SEM_CUSTOMER.CUSTOMER_ANALYTICS', 
         'SEM_DEV.SEM_SALES.SUPPLIER_ANALYTICS',
         'SEM_DEV.SEM_PRODUCT.PRODUCT_ANALYTICS',
-        'SEM_DEV.SEM_SALES.GOVERNANCE_ANALYTICS'
+        'SEM_DEV.SEM_GOVERNANCE.GOVERNANCE_ANALYTICS'
     ]
 
 def run_cortex_analyst(question: str, semantic_view: str) -> tuple:
@@ -421,13 +421,13 @@ def run_cortex_analyst(question: str, semantic_view: str) -> tuple:
             pass
         
         if not view_info:
-            # Fallback context based on view name
+            # Fallback context based on view name - matches actual semantic view definitions
             view_contexts = {
-                'SALES_ANALYTICS': 'Dimensions: YEAR, QUARTER, MONTH, REGION, NATION, MARKET_SEGMENT, BRAND, SUPPLIER, ORDER_STATUS. Metrics: total_revenue, order_count, average_order_value, on_time_delivery_rate',
-                'CUSTOMER_ANALYTICS': 'Dimensions: MARKET_SEGMENT, CUSTOMER_TIER, REGION, NATION, ACTIVITY_STATUS. Metrics: total_customers, active_customers, at_risk_customers, average_lifetime_value',
-                'SUPPLIER_ANALYTICS': 'Dimensions: SUPPLIER_NAME, SUPPLIER_TIER, NATION, REGION, DELIVERY_STATUS. Metrics: order_count, total_revenue, average_delivery_days, on_time_rate, return_rate',
-                'PRODUCT_ANALYTICS': 'Dimensions: PRODUCT_NAME, BRAND, MANUFACTURER, PRODUCT_TYPE, PRICE_TIER. Metrics: total_revenue, total_quantity_sold, gross_margin_pct, total_inventory',
-                'GOVERNANCE_ANALYTICS': 'Dimensions: CONTRACT_ID, CONTRACT_TYPE, STATUS, PRODUCER, ALERT_TYPE, ALERT_SEVERITY. Metrics: total_contracts, active_contracts, open_alerts, critical_alerts'
+                'SALES_ANALYTICS': 'Dimensions: YEAR, QUARTER, MONTH, MONTH_NAME, FULL_DATE, REGION_NAME, NATION_NAME, MARKET_SEGMENT, CUSTOMER_TIER, PART_NAME, BRAND, PART_TYPE, PRICE_TIER, SUPPLIER_NAME, SUPPLIER_TIER, ORDER_STATUS, ORDER_PRIORITY, SHIP_MODE, RETURN_STATUS, DELIVERY_STATUS. Metrics: line_items.total_revenue, line_items.total_net_revenue, line_items.total_quantity, orders.order_count, average_order_value, average_delivery_days',
+                'CUSTOMER_ANALYTICS': 'Dimensions: MARKET_SEGMENT, CUSTOMER_TIER, BALANCE_STATUS, REGION_NAME, NATION_NAME, ACTIVITY_STATUS, FIRST_ORDER_DATE, LAST_ORDER_DATE. Metrics: customers.customer_count, customer_orders.total_lifetime_value, average_lifetime_value, average_orders_per_customer, average_recency, average_tenure',
+                'SUPPLIER_ANALYTICS': 'Dimensions: SUPPLIER_NAME, SUPPLIER_TIER, NATION_NAME, REGION_NAME, DELIVERY_STATUS, RETURN_STATUS. Metrics: suppliers.supplier_count, line_items.total_revenue, line_items.total_quantity, average_delivery_days, partsupp.total_inventory',
+                'PRODUCT_ANALYTICS': 'Dimensions: PART_NAME, BRAND, MANUFACTURER, PART_TYPE, SIZE_CATEGORY, PRICE_TIER, CONTAINER_TYPE, RETURN_STATUS. Metrics: parts.product_count, line_items.total_revenue, line_items.total_quantity_sold, partsupp.total_inventory, average_retail_price',
+                'GOVERNANCE_ANALYTICS': 'Dimensions: CONTRACT_ID, CONTRACT_TYPE, STATUS, PRODUCER_SYSTEM, CONSUMER_SYSTEM, USE_CASE, RULE_NAME, SEVERITY, ENABLED, ALERT_TYPE, TITLE. Metrics: contracts.contract_count, consumers.consumer_count, quality_rules.rule_count, alerts.alert_count'
             }
             for key, ctx in view_contexts.items():
                 if key in semantic_view.upper():
@@ -635,7 +635,7 @@ def render_cortex_page():
                 "What is the average delivery time by supplier?",
                 "Which suppliers have the highest return rates?"
             ],
-            "SEM_DEV.SEM_SALES.GOVERNANCE_ANALYTICS": [
+            "SEM_DEV.SEM_GOVERNANCE.GOVERNANCE_ANALYTICS": [
                 "How many active contracts do we have?",
                 "Show me all open alerts",
                 "Which contracts have the most consumers?",
