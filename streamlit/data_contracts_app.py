@@ -429,6 +429,18 @@ def render_cortex_page():
                 "Show me customer segments by activity status",
                 "Which region has the most premium customers?"
             ],
+            "product_analytics_model.yaml": [
+                "Which products have the highest profit margin?",
+                "Show me inventory levels by product type",
+                "What are our top 10 selling products?",
+                "Which product categories need restocking?"
+            ],
+            "supplier_analytics_model.yaml": [
+                "Which suppliers have the best on-time delivery?",
+                "Show me supplier performance by region",
+                "What is the average lead time by supplier?",
+                "Which suppliers have quality issues?"
+            ],
             "governance_analytics_model.yaml": [
                 "Which contracts have SLA violations?",
                 "What is our overall data quality score?",
@@ -437,7 +449,12 @@ def render_cortex_page():
             ]
         }
         
-        questions = sample_questions.get(selected_model, sample_questions["sales_analytics_model.yaml"])
+        questions = sample_questions.get(selected_model, [
+            "What are the key metrics?",
+            "Show me a summary of the data",
+            "What trends do you see?",
+            "What are the top performing items?"
+        ])
         
         cols = st.columns(2)
         for i, q in enumerate(questions):
@@ -446,14 +463,26 @@ def render_cortex_page():
                     st.session_state.pending_question = q
                     st.rerun()
     
-    # Chat input
+    # Chat input (using text_input for Snowflake Streamlit compatibility)
     st.divider()
-    user_question = st.chat_input("Ask a question about your data...")
     
     # Handle pending question from sample buttons
     if "pending_question" in st.session_state:
         user_question = st.session_state.pending_question
         del st.session_state.pending_question
+    else:
+        col1, col2 = st.columns([5, 1])
+        with col1:
+            user_question = st.text_input(
+                "Ask a question about your data...",
+                key="user_input",
+                label_visibility="collapsed",
+                placeholder="Ask a question about your data..."
+            )
+        with col2:
+            submit = st.button("🚀 Ask", use_container_width=True)
+            if not submit:
+                user_question = None
     
     if user_question:
         # Add user message
