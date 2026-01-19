@@ -358,11 +358,11 @@ BEGIN
     v_yaml := PARSE_JSON(P_CONTRACT_YAML);
     
     -- Determine contract type and extract ID/version
-    IF (v_yaml:contract IS NOT NULL) THEN
+    IF v_yaml:contract IS NOT NULL THEN
         v_contract_type := 'data';
         v_contract_id := v_yaml:contract:id::VARCHAR;
         v_version := v_yaml:contract:version::VARCHAR;
-    ELSIF (v_yaml:product IS NOT NULL) THEN
+    ELSIF v_yaml:product IS NOT NULL THEN
         v_contract_type := 'product';
         v_contract_id := v_yaml:product:id::VARCHAR;
         v_version := v_yaml:product:version::VARCHAR;
