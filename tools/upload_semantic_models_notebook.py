@@ -12,6 +12,7 @@ from datetime import date, timedelta
 
 # Use the active Notebook session
 session = get_active_session()
+
 # Configuration
 STAGE_PATH = "@SEM_DEV.SEM_SALES.SEMANTIC_MODELS"
 
