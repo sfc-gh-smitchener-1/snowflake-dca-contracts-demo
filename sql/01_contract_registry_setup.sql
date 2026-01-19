@@ -14,11 +14,17 @@ USE ROLE ACCOUNTADMIN;
 -- Create governance database if not exists
 CREATE DATABASE IF NOT EXISTS GOVERNANCE;
 
+-- Set database context
+USE DATABASE GOVERNANCE;
+
 -- Create contract registry schema
-CREATE SCHEMA IF NOT EXISTS GOVERNANCE.CONTRACT_REGISTRY;
+CREATE SCHEMA IF NOT EXISTS CONTRACT_REGISTRY;
 
 -- Create observability schema for monitoring views
-CREATE SCHEMA IF NOT EXISTS GOVERNANCE.OBSERVABILITY;
+CREATE SCHEMA IF NOT EXISTS OBSERVABILITY;
+
+-- Set schema context
+USE SCHEMA CONTRACT_REGISTRY;
 
 -- ─────────────────────────────────────────────────────────────────────────────
 -- CONTRACT REGISTRY TABLES
