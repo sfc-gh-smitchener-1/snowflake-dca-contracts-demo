@@ -384,18 +384,60 @@ def get_semantic_models():
 def run_cortex_analyst(question: str, model_path: str) -> tuple:
     """Run Cortex Analyst query - returns (response_text, sql_query, result_df)"""
     session = get_session()
+    
+    # Map model to available tables
+    model_tables = {
+        "sales_analytics_model.yaml": """
+Available views in SEM_DEV.SEM_SALES schema:
+- VW_SALES_SUMMARY: REGION, NATION, MARKET_SEGMENT, TOTAL_ORDERS, TOTAL_REVENUE, AVG_ORDER_VALUE, ON_TIME_DELIVERY_RATE
+- VW_REVENUE_BY_REGION: REGION, NATION, TOTAL_REVENUE, ORDER_COUNT
+- VW_CUSTOMER_ORDERS: CUSTOMER_KEY, CUSTOMER_NAME, REGION, TOTAL_ORDERS, TOTAL_REVENUE, LAST_ORDER_DATE
+""",
+        "customer_analytics_model.yaml": """
+Available views in SEM_DEV.SEM_SALES schema:
+- VW_CUSTOMER_360: CUSTOMER_KEY, CUSTOMER_NAME, REGION, NATION, MARKET_SEGMENT, TOTAL_ORDERS, TOTAL_REVENUE, FIRST_ORDER_DATE, LAST_ORDER_DATE, DAYS_SINCE_LAST_ORDER, CUSTOMER_SEGMENT
+- VW_CUSTOMER_SEGMENTS: CUSTOMER_SEGMENT, CUSTOMER_COUNT, TOTAL_REVENUE, AVG_ORDER_VALUE
+""",
+        "supplier_analytics_model.yaml": """
+Available views in SEM_DEV.SEM_SALES schema:
+- VW_SUPPLIER_PERFORMANCE: SUPPLIER_KEY, SUPPLIER_NAME, NATION, REGION, TOTAL_PARTS, TOTAL_SUPPLY_COST, AVG_SUPPLY_COST
+- VW_PARTSUPP_DETAILS: PART_KEY, SUPPLIER_KEY, SUPPLIER_NAME, AVAILQTY, SUPPLYCOST
+""",
+        "product_analytics_model.yaml": """
+Available views in SEM_DEV.SEM_SALES schema:
+- VW_PRODUCT_SALES: PART_KEY, PART_NAME, BRAND, TYPE, SIZE, TOTAL_QUANTITY, TOTAL_REVENUE
+- VW_INVENTORY: PART_KEY, PART_NAME, TOTAL_AVAILABLE_QTY, SUPPLIER_COUNT
+""",
+        "governance_analytics_model.yaml": """
+Available views in GOVERNANCE.OBSERVABILITY schema:
+- VW_CONTRACT_HEALTH_DASHBOARD: CONTRACT_ID, CONTRACT_TYPE, STATUS, QUALITY_SCORE, FRESHNESS_STATUS, CONSUMER_COUNT, OVERALL_HEALTH
+- VW_DASHBOARD_KPIS: ACTIVE_CONTRACTS, AVG_HEALTH_SCORE, SLA_COMPLIANCE_24H, CRITICAL_ALERTS
+- VW_ACTIVE_ALERTS: ALERT_ID, CONTRACT_ID, ALERT_TYPE, SEVERITY, TITLE, MESSAGE, STATUS
+"""
+    }
+    
+    schema_context = model_tables.get(model_path, """
+Available views in SEM_DEV.SEM_SALES schema:
+- VW_SALES_SUMMARY, VW_CUSTOMER_360, VW_SUPPLIER_PERFORMANCE, VW_PRODUCT_SALES
+""")
+    
     try:
-        # Call Cortex Complete function
+        # Call Cortex Complete function with better context
+        escaped_question = question.replace("'", "''").replace("\\", "\\\\")
+        escaped_context = schema_context.replace("'", "''").replace("\\", "\\\\")
+        
         result = session.sql(f"""
             SELECT SNOWFLAKE.CORTEX.COMPLETE(
                 'llama3.1-70b',
-                CONCAT(
-                    'You are a helpful data analyst working with Snowflake. ',
-                    'Generate a SQL query to answer this question. ',
-                    'Return ONLY the SQL query, no explanations. ',
-                    'Available tables: SEM_DEV.SEM_SALES views. ',
-                    'Question: {question.replace("'", "''")}'
-                )
+                'You are a SQL expert for Snowflake. Generate ONLY a valid SQL SELECT query. No explanations, no markdown, just the raw SQL query.
+
+{escaped_context}
+
+Important: Always use fully qualified table names like SEM_DEV.SEM_SALES.VW_SALES_SUMMARY or GOVERNANCE.OBSERVABILITY.VW_CONTRACT_HEALTH_DASHBOARD.
+
+Question: {escaped_question}
+
+SQL Query:'
             ) as RESPONSE
         """).to_pandas()
         
@@ -584,57 +626,61 @@ def render_cortex_page():
         for i, q in enumerate(questions):
             with cols[i % 2]:
                 if st.button(f"💬 {q}", key=f"sample_{i}", use_container_width=True):
-                    st.session_state.pending_question = q
+                    # Process immediately
+                    process_and_display_question(q, selected_model)
     
     # Chat input
     st.divider()
     
-    # Check for pending question from sample buttons
-    pending_q = st.session_state.get("pending_question", None)
-    if pending_q:
-        del st.session_state.pending_question
-        process_question(pending_q, selected_model)
+    # Simple text input with button (no form for better compatibility)
+    col1, col2 = st.columns([5, 1])
+    with col1:
+        user_question = st.text_input(
+            "Question",
+            placeholder="Ask a question about your data...",
+            label_visibility="collapsed",
+            key="main_question_input"
+        )
+    with col2:
+        ask_clicked = st.button("🚀 Ask", use_container_width=True, key="ask_button")
     
-    # Input form
-    with st.form(key="question_form", clear_on_submit=True):
-        col1, col2 = st.columns([5, 1])
-        with col1:
-            user_question = st.text_input(
-                "Question",
-                placeholder="Ask a question about your data...",
-                label_visibility="collapsed"
-            )
-        with col2:
-            submit = st.form_submit_button("🚀 Ask", use_container_width=True)
-        
-        if submit and user_question:
-            process_question(user_question, selected_model)
+    if ask_clicked and user_question:
+        process_and_display_question(user_question, selected_model)
     
     # Clear chat button
     if st.session_state.messages:
-        if st.button("🗑️ Clear Chat"):
+        if st.button("🗑️ Clear Chat", key="clear_chat"):
             st.session_state.messages = []
 
-def process_question(question: str, model: str):
-    """Process a user question"""
-    # Add user message
+def process_and_display_question(question: str, model: str):
+    """Process a user question and display results immediately"""
+    # Add user message to history
     st.session_state.messages.append({"role": "user", "content": question})
     
-    # Get response
+    # Show spinner and get response
     with st.spinner("🤔 Thinking..."):
         response_text, sql_query, result_df = run_cortex_analyst(question, model)
     
     # Build response content
     content = response_text
     if sql_query:
-        content += f"\n\n```sql\n{sql_query}\n```"
+        content += f"\n\n**Generated SQL:**\n```sql\n{sql_query}\n```"
     
-    # Store response
+    # Store response in history
     st.session_state.messages.append({
         "role": "assistant", 
         "content": content,
         "df": result_df
     })
+    
+    # Display the response immediately
+    st.markdown("---")
+    st.markdown("### 🤖 Response")
+    st.markdown(content)
+    
+    if result_df is not None and not result_df.empty:
+        st.markdown("**Results:**")
+        st.dataframe(result_df, use_container_width=True, hide_index=True)
 
 # ============================================================================
 # HORIZON DASHBOARD PAGE
@@ -727,7 +773,7 @@ def render_horizon_dashboard():
         if not sla.empty and 'HOUR' in sla.columns and 'COMPLIANCE_RATE' in sla.columns:
             chart_data = sla[['HOUR', 'COMPLIANCE_RATE']].copy()
             chart_data = chart_data.sort_values('HOUR')
-            st.line_chart(chart_data.set_index('HOUR'), color="#29B5E8")
+            st.line_chart(chart_data.set_index('HOUR'))
         else:
             st.info("📊 No SLA trend data available yet. Run validation procedures to generate metrics.")
     
@@ -735,7 +781,7 @@ def render_horizon_dashboard():
         st.markdown("### 🏷️ Governance Tag Coverage")
         if not tags.empty and 'TAG_NAME' in tags.columns and 'COVERAGE_PCT' in tags.columns:
             chart_data = tags[['TAG_NAME', 'COVERAGE_PCT']].copy()
-            st.bar_chart(chart_data.set_index('TAG_NAME'), color="#6E56CF")
+            st.bar_chart(chart_data.set_index('TAG_NAME'))
         else:
             st.info("🏷️ No tag coverage data available yet. Register contracts to see coverage.")
     
