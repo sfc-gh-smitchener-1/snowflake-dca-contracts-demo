@@ -367,109 +367,127 @@ def get_tag_coverage():
         return pd.DataFrame()
 
 @st.cache_data(ttl=300)
-def get_semantic_models():
-    """List available semantic models"""
+def get_semantic_views():
+    """List available semantic views"""
     session = get_session()
     try:
+        # Get semantic views from the SEM_DEV database
         df = session.sql("""
-            SELECT DISTINCT RELATIVE_PATH as MODEL_NAME
-            FROM DIRECTORY('@SEM_DEV.SEM_SALES.SEMANTIC_MODELS')
-            WHERE RELATIVE_PATH LIKE '%.yaml'
+            SHOW SEMANTIC VIEWS IN DATABASE SEM_DEV
         """).to_pandas()
-        return df['MODEL_NAME'].tolist() if not df.empty else []
+        if not df.empty and 'name' in df.columns:
+            # Build fully qualified names
+            views = []
+            for _, row in df.iterrows():
+                schema = row.get('schema_name', '')
+                name = row.get('name', '')
+                if schema and name:
+                    views.append(f"SEM_DEV.{schema}.{name}")
+            return views if views else get_default_semantic_views()
+        return get_default_semantic_views()
     except Exception as e:
-        return ['sales_analytics_model.yaml', 'customer_analytics_model.yaml', 
-                'product_analytics_model.yaml', 'governance_analytics_model.yaml']
+        return get_default_semantic_views()
 
-def run_cortex_analyst(question: str, model_path: str) -> tuple:
-    """Run Cortex Analyst query - returns (response_text, sql_query, result_df)"""
+def get_default_semantic_views():
+    """Return default list of semantic views"""
+    return [
+        'SEM_DEV.SEM_SALES.SALES_ANALYTICS',
+        'SEM_DEV.SEM_CUSTOMER.CUSTOMER_ANALYTICS', 
+        'SEM_DEV.SEM_SALES.SUPPLIER_ANALYTICS',
+        'SEM_DEV.SEM_PRODUCT.PRODUCT_ANALYTICS',
+        'SEM_DEV.SEM_SALES.GOVERNANCE_ANALYTICS'
+    ]
+
+def run_cortex_analyst(question: str, semantic_view: str) -> tuple:
+    """Run Cortex Analyst query against a semantic view - returns (response_text, sql_query, result_df)"""
     session = get_session()
     
-    # Map model to available tables - these are the ACTUAL views that exist
-    model_tables = {
-        "sales_analytics_model.yaml": """
-Available views:
-1. SEM_DEV.SEM_SALES.VW_SALES_ANALYTICS - Line item level sales data
-   Columns: ORDER_DATE, YEAR, QUARTER, MONTH, REGION_NAME, NATION_NAME, MARKET_SEGMENT, CUSTOMER_KEY, PART_NAME, BRAND, SUPPLIER_NAME, QUANTITY, GROSS_REVENUE, NET_REVENUE, DISCOUNT_AMOUNT, DELIVERY_DAYS, IS_RETURNED, IS_LATE_DELIVERY
-
-2. SEM_DEV.SEM_SALES.VW_SALES_SUMMARY - Aggregated sales by dimensions
-   Columns: YEAR, QUARTER, MONTH, REGION_NAME, MARKET_SEGMENT, CUSTOMER_TIER, MANUFACTURER, BRAND, ORDER_COUNT, CUSTOMER_COUNT, GROSS_REVENUE, NET_REVENUE, AVG_ORDER_VALUE, RETURN_RATE_PCT, LATE_DELIVERY_RATE_PCT, AVG_DELIVERY_DAYS
-""",
-        "customer_analytics_model.yaml": """
-Available views:
-1. SEM_DEV.SEM_CUSTOMER.VW_CUSTOMER_ANALYTICS - Customer RFM and segmentation
-   Columns: CUSTOMER_ID, MARKET_SEGMENT, CUSTOMER_TIER, REGION_NAME, NATION_NAME, TOTAL_ORDERS, LIFETIME_VALUE, AVG_ORDER_VALUE, FIRST_ORDER_DATE, LAST_ORDER_DATE, RECENCY_DAYS, TENURE_DAYS, ACTIVITY_STATUS, RECENCY_SCORE, FREQUENCY_SCORE, MONETARY_SCORE, CUSTOMER_SEGMENT
-""",
-        "supplier_analytics_model.yaml": """
-Available views:
-1. SEM_DEV.SEM_SALES.VW_SUPPLIER_ANALYTICS - Supplier performance metrics
-   Columns: SUPPLIER_KEY, SUPPLIER_NAME, SUPPLIER_TIER, NATION_NAME, REGION_NAME, ORDER_COUNT, TOTAL_QUANTITY_SOLD, GROSS_REVENUE, NET_REVENUE, RETURN_COUNT, RETURN_RATE_PCT, LATE_DELIVERIES, LATE_DELIVERY_RATE_PCT, AVG_DELIVERY_DAYS, PARTS_SUPPLIED, TOTAL_INVENTORY, SUPPLIER_SCORE, SUPPLIER_CATEGORY
-""",
-        "product_analytics_model.yaml": """
-Available views:
-1. SEM_DEV.SEM_PRODUCT.VW_PRODUCT_ANALYTICS - Product performance and inventory
-   Columns: PART_KEY, PART_NAME, MANUFACTURER, BRAND, PART_TYPE, RETAIL_PRICE, PRICE_TIER, ORDER_COUNT, TOTAL_QUANTITY_SOLD, GROSS_REVENUE, NET_REVENUE, RETURN_RATE_PCT, INVENTORY_ON_HAND, AVG_SUPPLY_COST, GROSS_MARGIN, GROSS_MARGIN_PCT, INVENTORY_STATUS, PERFORMANCE_TIER
-""",
-        "governance_analytics_model.yaml": """
-Available views:
-1. GOVERNANCE.OBSERVABILITY.VW_CONTRACT_HEALTH_DASHBOARD - Contract health metrics
-   Columns: CONTRACT_ID, CONTRACT_TYPE, VERSION, STATUS, PRODUCER_SYSTEM, QUALITY_SCORE, FRESHNESS_STATUS, CONSUMER_COUNT, OVERALL_HEALTH, OVERALL_SCORE
-
-2. GOVERNANCE.OBSERVABILITY.VW_DASHBOARD_KPIS - Summary KPIs
-   Columns: ACTIVE_CONTRACTS, AVG_HEALTH_SCORE, AVG_QUALITY_SCORE, SLA_COMPLIANCE_24H, CRITICAL_ALERTS, WARNING_ALERTS
-
-3. GOVERNANCE.OBSERVABILITY.VW_ACTIVE_ALERTS - Active alerts
-   Columns: ALERT_ID, CONTRACT_ID, ALERT_TYPE, SEVERITY, TITLE, MESSAGE, STATUS, CREATED_AT
-"""
-    }
-    
-    schema_context = model_tables.get(model_path, """
-Available views:
-1. SEM_DEV.SEM_SALES.VW_SALES_SUMMARY - Aggregated sales data
-2. SEM_DEV.SEM_CUSTOMER.VW_CUSTOMER_ANALYTICS - Customer analytics
-3. SEM_DEV.SEM_SALES.VW_SUPPLIER_ANALYTICS - Supplier performance
-4. SEM_DEV.SEM_PRODUCT.VW_PRODUCT_ANALYTICS - Product analytics
-""")
-    
     try:
-        # Call Cortex Complete function with better context
-        escaped_question = question.replace("'", "''").replace("\\", "\\\\")
-        escaped_context = schema_context.replace("'", "''").replace("\\", "\\\\")
+        # First, try to get the semantic view schema to provide context
+        view_info = ""
+        try:
+            # Get dimensions
+            dims = session.sql(f"SHOW SEMANTIC DIMENSIONS IN SEMANTIC VIEW {semantic_view}").to_pandas()
+            if not dims.empty and 'name' in dims.columns:
+                dim_names = dims['name'].tolist()[:15]  # Limit to prevent token overflow
+                view_info += f"Dimensions: {', '.join(dim_names)}\n"
+            
+            # Get metrics
+            metrics = session.sql(f"SHOW SEMANTIC METRICS IN SEMANTIC VIEW {semantic_view}").to_pandas()
+            if not metrics.empty and 'name' in metrics.columns:
+                metric_names = metrics['name'].tolist()[:10]
+                view_info += f"Metrics: {', '.join(metric_names)}\n"
+        except:
+            pass
         
+        if not view_info:
+            # Fallback context based on view name
+            view_contexts = {
+                'SALES_ANALYTICS': 'Dimensions: YEAR, QUARTER, MONTH, REGION, NATION, MARKET_SEGMENT, BRAND, SUPPLIER, ORDER_STATUS. Metrics: total_revenue, order_count, average_order_value, on_time_delivery_rate',
+                'CUSTOMER_ANALYTICS': 'Dimensions: MARKET_SEGMENT, CUSTOMER_TIER, REGION, NATION, ACTIVITY_STATUS. Metrics: total_customers, active_customers, at_risk_customers, average_lifetime_value',
+                'SUPPLIER_ANALYTICS': 'Dimensions: SUPPLIER_NAME, SUPPLIER_TIER, NATION, REGION, DELIVERY_STATUS. Metrics: order_count, total_revenue, average_delivery_days, on_time_rate, return_rate',
+                'PRODUCT_ANALYTICS': 'Dimensions: PRODUCT_NAME, BRAND, MANUFACTURER, PRODUCT_TYPE, PRICE_TIER. Metrics: total_revenue, total_quantity_sold, gross_margin_pct, total_inventory',
+                'GOVERNANCE_ANALYTICS': 'Dimensions: CONTRACT_ID, CONTRACT_TYPE, STATUS, PRODUCER, ALERT_TYPE, ALERT_SEVERITY. Metrics: total_contracts, active_contracts, open_alerts, critical_alerts'
+            }
+            for key, ctx in view_contexts.items():
+                if key in semantic_view.upper():
+                    view_info = ctx
+                    break
+        
+        escaped_question = question.replace("'", "''")
+        escaped_view = semantic_view.replace("'", "''")
+        escaped_info = view_info.replace("'", "''")
+        
+        # Call Cortex Complete to generate SQL for the semantic view
         result = session.sql(f"""
             SELECT SNOWFLAKE.CORTEX.COMPLETE(
                 'llama3.1-70b',
-                'You are a SQL expert for Snowflake. Generate ONLY a valid SQL SELECT query. No explanations, no markdown, just the raw SQL query.
+                'You are a Snowflake SQL expert. Generate a query for a SEMANTIC VIEW.
 
-{escaped_context}
+Semantic View: {escaped_view}
+{escaped_info}
 
-Important: Always use fully qualified table names like SEM_DEV.SEM_SALES.VW_SALES_SUMMARY or GOVERNANCE.OBSERVABILITY.VW_CONTRACT_HEALTH_DASHBOARD.
+For semantic views, you can query them like regular views but with special syntax:
+- SELECT dimensions and metrics directly
+- Use AGGREGATE BY for grouping
+- Or query as a regular table: SELECT * FROM {escaped_view} LIMIT 100
+
+Generate a simple, valid SQL query. Return ONLY the SQL, no explanations.
 
 Question: {escaped_question}
 
-SQL Query:'
+SQL:'
             ) as RESPONSE
         """).to_pandas()
         
         if not result.empty:
             response = result['RESPONSE'].iloc[0]
             
-            # Try to extract and execute SQL if it looks like a query
-            if 'SELECT' in response.upper():
+            # Try to extract and execute SQL
+            if response and 'SELECT' in response.upper():
+                # Clean up the response
+                sql = response.strip()
+                
+                # Remove markdown code blocks if present
+                if '```' in sql:
+                    parts = sql.split('```')
+                    for part in parts:
+                        if 'SELECT' in part.upper():
+                            sql = part.strip()
+                            if sql.lower().startswith('sql'):
+                                sql = sql[3:].strip()
+                            break
+                
+                # Remove any trailing text after the query
+                if ';' in sql:
+                    sql = sql.split(';')[0] + ';'
+                
                 try:
-                    # Clean up the response to get just SQL
-                    sql = response.strip()
-                    if sql.startswith('```'):
-                        sql = sql.split('```')[1]
-                        if sql.startswith('sql'):
-                            sql = sql[3:]
-                        sql = sql.strip()
-                    
                     # Execute the query
                     df = session.sql(sql).to_pandas()
                     return (f"✅ Query executed successfully", sql, df)
                 except Exception as e:
-                    return (f"Generated SQL:\n```\n{response}\n```\n\n⚠️ Execution error: {str(e)}", None, None)
+                    return (f"⚠️ SQL execution error: {str(e)}\n\nGenerated SQL:\n```sql\n{sql}\n```", sql, None)
             
             return (response, None, None)
         return ("No response generated", None, None)
@@ -549,18 +567,18 @@ def render_cortex_page():
     st.markdown("""
     <div class="main-header">
         <h1>🤖 Snowflake Cortex</h1>
-        <p>Ask questions about your data in natural language</p>
+        <p>Ask questions about your data using Semantic Views</p>
     </div>
     """, unsafe_allow_html=True)
     
-    # Model selector
+    # Semantic View selector
     col1, col2 = st.columns([3, 1])
     with col1:
-        models = get_semantic_models()
-        selected_model = st.selectbox(
-            "Select Semantic Model",
-            models,
-            help="Choose which semantic model to query"
+        views = get_semantic_views()
+        selected_view = st.selectbox(
+            "Select Semantic View",
+            views,
+            help="Choose which semantic view to query"
         )
     with col2:
         st.write("")  # Spacing
@@ -593,43 +611,43 @@ def render_cortex_page():
         st.markdown("### 💡 Sample Questions")
         
         sample_questions = {
-            "sales_analytics_model.yaml": [
-                "What was our total revenue last quarter?",
-                "Show me revenue by region",
-                "Which market segment generates the most revenue?",
-                "What is our on-time delivery rate?"
+            "SEM_DEV.SEM_SALES.SALES_ANALYTICS": [
+                "What is the total revenue by region?",
+                "Show me the top 10 brands by revenue",
+                "What is our on-time delivery rate?",
+                "Which market segments have the most orders?"
             ],
-            "customer_analytics_model.yaml": [
+            "SEM_DEV.SEM_CUSTOMER.CUSTOMER_ANALYTICS": [
                 "How many customers are at risk of churning?",
-                "What is our average customer lifetime value?",
-                "Show me customer segments by activity status",
-                "Which region has the most premium customers?"
+                "What is the average customer lifetime value?",
+                "Show me customers by activity status",
+                "Which regions have the most customers?"
             ],
-            "product_analytics_model.yaml": [
-                "Which products have the highest profit margin?",
-                "Show me inventory levels by product type",
+            "SEM_DEV.SEM_PRODUCT.PRODUCT_ANALYTICS": [
+                "Which products have the highest gross margin?",
+                "Show me total inventory by brand",
                 "What are our top 10 selling products?",
-                "Which product categories need restocking?"
+                "Which products have high return rates?"
             ],
-            "supplier_analytics_model.yaml": [
+            "SEM_DEV.SEM_SALES.SUPPLIER_ANALYTICS": [
                 "Which suppliers have the best on-time delivery?",
                 "Show me supplier performance by region",
-                "What is the average lead time by supplier?",
-                "Which suppliers have quality issues?"
+                "What is the average delivery time by supplier?",
+                "Which suppliers have the highest return rates?"
             ],
-            "governance_analytics_model.yaml": [
-                "Which contracts have SLA violations?",
-                "What is our overall data quality score?",
-                "Show me contracts with the most consumers",
-                "What percentage of columns have governance tags?"
+            "SEM_DEV.SEM_SALES.GOVERNANCE_ANALYTICS": [
+                "How many active contracts do we have?",
+                "Show me all open alerts",
+                "Which contracts have the most consumers?",
+                "How many critical alerts are there?"
             ]
         }
         
-        questions = sample_questions.get(selected_model, [
-            "What are the key metrics?",
+        questions = sample_questions.get(selected_view, [
             "Show me a summary of the data",
-            "What trends do you see?",
-            "What are the top performing items?"
+            "What are the key metrics?",
+            "What are the totals by category?",
+            "Show me the top 10 items"
         ])
         
         cols = st.columns(2)
@@ -637,7 +655,7 @@ def render_cortex_page():
             with cols[i % 2]:
                 if st.button(f"💬 {q}", key=f"sample_{i}", use_container_width=True):
                     # Process immediately
-                    process_and_display_question(q, selected_model)
+                    process_and_display_question(q, selected_view)
     
     # Chat input
     st.divider()
@@ -655,7 +673,7 @@ def render_cortex_page():
         ask_clicked = st.button("🚀 Ask", use_container_width=True, key="ask_button")
     
     if ask_clicked and user_question:
-        process_and_display_question(user_question, selected_model)
+        process_and_display_question(user_question, selected_view)
     
     # Clear chat button
     if st.session_state.messages:

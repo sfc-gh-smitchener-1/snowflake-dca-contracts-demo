@@ -22,7 +22,7 @@ This demo is designed for **Snowflake Cortex** and AI-powered applications:
 
 | AI Capability | Implementation in This Demo |
 |--------------|----------------------------|
-| **Cortex Analyst** | YAML semantic models enable natural language SQL generation |
+| **Cortex Analyst** | Native Semantic Views enable natural language SQL generation |
 | **Snowflake Intelligence** | AI-powered insights on business and governance data |
 | **Cortex LLM Functions** | `COMPLETE()`, `SUMMARIZE()`, `TRANSLATE()` on contract-governed data |
 | **Cortex Search** | Semantic search over product catalogs and customer data |
@@ -70,7 +70,7 @@ The contract-first architecture provides the foundation for **trustworthy AI age
 **Key patterns for AI agents:**
 
 1. **Use the `AI_AGENT` role** - Pre-configured with access only to AI-safe views
-2. **Query semantic models** - Cortex Analyst uses YAML models in `@SEM_DEV.SEM_SALES.SEMANTIC_MODELS`
+2. **Query Semantic Views** - Cortex Analyst uses native Semantic Views with REFERENCES privilege
 3. **Respect AI_ALLOWED tags** - Only data tagged `AI_ALLOWED = TRUE` or `PSEUDONYMIZED_ONLY` is accessible
 4. **Audit everything** - All agent queries logged via Access History for compliance
 
@@ -97,7 +97,7 @@ This demo showcases a **contract-first data architecture** in Snowflake, impleme
 - **Three-Layer Architecture**: RAW → CURATED → SEMANTIC data flow
 - **Snowflake Horizon Governance**: Tag-based classification, PII detection, and AI eligibility using native Snowflake features
 - **Dynamic Tables**: Automated transformation pipelines with declarative lag targets
-- **Cortex Analyst Integration**: First-class Snowflake semantic views with YAML models for natural language queries
+- **Cortex Analyst Integration**: Native Snowflake Semantic Views with dimensions, metrics, and relationships
 - **Observability Dashboard**: Real-time contract adherence monitoring
 
 ## Architecture
@@ -185,23 +185,22 @@ This demo showcases a **contract-first data architecture** in Snowflake, impleme
    -- Run: sql/06_semantic_layer.sql (AS DATA_ADMIN)
    ```
 
-4. **Upload Semantic Models to Stage** (required for Cortex Analyst)
-   ```bash
-   # Using SnowSQL CLI (run from project root directory)
-   cd snowflake-dca-contracts-demo
-   snowsql -a <account> -u <user> -f tools/upload_semantic_models.sql
+4. **Semantic Views Created Automatically**
    
-   # Or using Python
-   pip install snowflake-connector-python
-   export SNOWFLAKE_ACCOUNT=<account>
-   export SNOWFLAKE_USER=<user>
-   export SNOWFLAKE_PASSWORD=<password>
-   python tools/upload_semantic_models.py
-   ```
+   The `06_semantic_layer.sql` script creates native **Snowflake Semantic Views** with:
+   - Logical table definitions and relationships
+   - Dimensions with synonyms for natural language understanding
+   - Metrics with business-friendly names
+   - Built-in Cortex Analyst integration
    
-   Alternatively, upload via Snowsight UI:
-   - Navigate to Data → Databases → SEM_DEV → SEM_SALES → Stages → SEMANTIC_MODELS
-   - Click "Upload Files" and select all files from `semantic_models/` folder
+   Available Semantic Views:
+   | Semantic View | Description |
+   |---------------|-------------|
+   | `SEM_DEV.SEM_SALES.SALES_ANALYTICS` | Revenue, orders, delivery metrics |
+   | `SEM_DEV.SEM_CUSTOMER.CUSTOMER_ANALYTICS` | RFM scoring, churn, LTV |
+   | `SEM_DEV.SEM_SALES.SUPPLIER_ANALYTICS` | Vendor performance, quality |
+   | `SEM_DEV.SEM_PRODUCT.PRODUCT_ANALYTICS` | Inventory, margins, products |
+   | `SEM_DEV.SEM_SALES.GOVERNANCE_ANALYTICS` | Contract health, alerts |
 
 5. **Continue with remaining scripts**
    ```sql
@@ -272,12 +271,8 @@ snowflake-dca-contracts-demo/
 │   ├── 12_streamlit_app.sql        # Deploy Streamlit app
 │   └── 99_cleanup_demo.sql         # Reset/cleanup script (ACCOUNTADMIN)
 │
-├── semantic_models/                # Cortex Analyst Semantic Models (YAML)
-│   ├── sales_analytics_model.yaml      # Revenue, orders, delivery
-│   ├── customer_analytics_model.yaml   # RFM, segmentation, churn
-│   ├── product_analytics_model.yaml    # Inventory, margins, performance
-│   ├── supplier_analytics_model.yaml   # Vendor quality, delivery
-│   └── governance_analytics_model.yaml # Contract health, SLAs, trust
+├── semantic_models/                # (Legacy) YAML Semantic Models - replaced by native Semantic Views
+│   └── *.yaml                          # Reference files for Cortex Analyst YAML format
 │
 ├── schemas/                        # JSON Schemas for Validation
 │   └── data_contract_schema.json
@@ -422,7 +417,7 @@ Access the app at: **Projects → Streamlit → DATA_CONTRACTS_APP**
 
 | Tab | Description |
 |-----|-------------|
-| 🤖 **Cortex Analyst** | Natural language queries on semantic models |
+| 🤖 **Cortex Analyst** | Natural language queries on Semantic Views |
 | 🔮 **Horizon Dashboard** | Governance health with stoplights, charts, alerts |
 | 📊 **Contract Details** | Individual contract exploration |
 | ℹ️ **About** | Architecture overview and resources |
@@ -570,33 +565,35 @@ This demo forces disambiguation at contract definition time, ensuring that:
 - Every consumer is registered
 - Every SLA is measurable
 
-## Cortex Analyst & Snowflake Intelligence
+## Cortex Analyst & Semantic Views
 
-The semantic models in this demo are designed for **Cortex Analyst** natural language queries:
+This demo uses native **Snowflake Semantic Views** for Cortex Analyst integration:
 
 ```sql
--- Query sales data using natural language
-SELECT SNOWFLAKE.CORTEX.ANALYST(
-    'What was our revenue by region last quarter?',
-    '@SEM_DEV.SEM_SALES.SEMANTIC_MODELS/sales_analytics_model.yaml'
-);
+-- Query semantic view directly with SQL
+SELECT * FROM SEMANTIC VIEW SEM_DEV.SEM_SALES.SALES_ANALYTICS
+    WHERE REGION = 'AMERICA'
+    AGGREGATE BY YEAR, QUARTER
+    METRICS total_revenue, order_count;
 
--- Query governance data using natural language  
-SELECT SNOWFLAKE.CORTEX.ANALYST(
-    'Which contracts have SLA violations?',
-    '@SEM_DEV.SEM_SALES.SEMANTIC_MODELS/governance_analytics_model.yaml'
-);
+-- Or query as a regular view
+SELECT REGION, YEAR, SUM(GROSS_REVENUE) AS REVENUE
+FROM SEM_DEV.SEM_SALES.SALES_ANALYTICS
+GROUP BY REGION, YEAR;
+
+-- List available metrics
+SHOW SEMANTIC METRICS IN SEMANTIC VIEW SEM_DEV.SEM_SALES.SALES_ANALYTICS;
 ```
 
 See **[Sample Questions](docs/SAMPLE_QUESTIONS.md)** for 125+ proven questions across:
 
-| Category | Semantic Model | Examples |
-|----------|---------------|----------|
-| **Sales Analytics** | `sales_analytics_model.yaml` | "What was revenue by region last quarter?" |
-| **Customer Analytics** | `customer_analytics_model.yaml` | "Which customers are at risk of churning?" |
-| **Product Analytics** | `product_analytics_model.yaml` | "Which products have low stock but high sales?" |
-| **Supplier Analytics** | `supplier_analytics_model.yaml` | "Which suppliers have the best on-time delivery?" |
-| **Governance Analytics** | `governance_analytics_model.yaml` | "Which contracts have critical issues?" |
+| Category | Semantic View | Examples |
+|----------|--------------|----------|
+| **Sales Analytics** | `SEM_SALES.SALES_ANALYTICS` | "What was revenue by region last quarter?" |
+| **Customer Analytics** | `SEM_CUSTOMER.CUSTOMER_ANALYTICS` | "Which customers are at risk of churning?" |
+| **Product Analytics** | `SEM_PRODUCT.PRODUCT_ANALYTICS` | "Which products have low stock but high sales?" |
+| **Supplier Analytics** | `SEM_SALES.SUPPLIER_ANALYTICS` | "Which suppliers have the best on-time delivery?" |
+| **Governance Analytics** | `SEM_SALES.GOVERNANCE_ANALYTICS` | "Which contracts have critical issues?" |
 
 ### Using Cortex LLM Functions with Governed Data
 
