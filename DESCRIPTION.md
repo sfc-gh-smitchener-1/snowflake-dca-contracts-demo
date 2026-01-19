@@ -2,7 +2,7 @@
 
 ## Short Description (for GitHub)
 
-**Snowflake Data Contracts Demo** — Implements the Enterprise Architecture Guide for the Snowflake Data Cloud, demonstrating how to make business intent explicit, portable, and enforceable through data contracts, semantic models, and runtime governance.
+**Snowflake Data Contracts Demo** — Built on **Snowflake Horizon** governance capabilities, this demo implements the Enterprise Architecture Guide for the Snowflake Data Cloud, demonstrating how to make business intent explicit, portable, and enforceable through data contracts, Cortex Analyst semantic models, and runtime governance using Object Tagging, Dynamic Tables, and Tag-Based Masking Policies.
 
 ---
 
@@ -57,28 +57,49 @@ The Enterprise Architecture Guide defines six dimensions of intent that must be 
 | **CURATED** | Business-ready transformations | Business rule enforcement |
 | **SEMANTIC** | Consumer-facing, AI-ready products | Contract guarantees |
 
-#### 🤖 First-Class Semantic Views for AI
+#### 🤖 Snowflake Cortex AI Integration
 
-Unlike traditional secure views, this demo uses **first-class Snowflake semantic views** designed for Cortex Analyst and Snowflake Intelligence:
+This demo is built for the full **Snowflake Cortex** AI platform:
 
+| Cortex Capability | How This Demo Uses It |
+|------------------|----------------------|
+| **Cortex Analyst** | YAML semantic models enable natural language → SQL |
+| **Snowflake Intelligence** | AI-powered insights on business + governance data |
+| **Cortex LLM Functions** | `COMPLETE()`, `SUMMARIZE()`, `TRANSLATE()` on governed data |
+| **Cortex Search** | Semantic search over product/customer data |
+| **Cortex ML Functions** | `FORECAST()`, `ANOMALY_DETECTION()` on AI-eligible views |
+| **Cortex Fine-Tuning** | Train custom models on `AI_ALLOWED=TRUE` data |
+
+**Semantic Models for Cortex Analyst:**
 - **Sales Analytics** — Revenue, orders, delivery (125+ sample questions)
 - **Customer Analytics** — RFM scoring, segmentation, churn prediction
 - **Product Analytics** — Inventory, margins, performance tiers
 - **Supplier Analytics** — Vendor quality, delivery metrics
 - **Governance Analytics** — Contract health, SLA compliance, trust
 
+#### 🤖 Building AI Agents
+
+The architecture provides the foundation for **trustworthy AI agents**:
+
+1. **AI_AGENT role** — Pre-configured access to AI-safe semantic views only
+2. **AI_ALLOWED tags** — Explicit declaration of AI-eligible data
+3. **Pseudonymization** — PII protected via `PSEUDONYMIZED_ONLY` tag
+4. **Semantic models** — YAML definitions for Cortex Analyst natural language queries
+5. **Access History** — Full audit trail of agent data access
+
 > *"Treat AI as a participant, not an exception."*
 
-The `AI_ALLOWED` tag explicitly declares what data AI systems may consume, with `PSEUDONYMIZED_ONLY` bridging protection and utility.
-
-#### 🔐 Governance Enforced at Runtime
+#### 🔐 Snowflake Horizon Governance at Runtime
 
 > *"Publish contracts instead of assumptions. Enforce governance at runtime."*
 
-- **Data Classification**: PUBLIC, INTERNAL, CONFIDENTIAL, RESTRICTED
-- **PII Protection**: Column-level tags with dynamic masking policies
+Using **Snowflake Horizon** unified governance capabilities:
+
+- **Object Tagging**: `DATA_CLASSIFICATION`, `PII_TYPE`, `AI_ALLOWED`, `CONTRACT_ID` tags
+- **Tag-Based Masking Policies**: Dynamic column masking based on PII_TYPE tags
+- **Data Classification**: Automatic sensitivity labeling at column level
+- **Access History**: Who uses what data and for what purpose
 - **Residency Controls**: GLOBAL, ORIGIN, EU_ONLY, US_ONLY
-- **Consumer Tracking**: Who uses what data and for what purpose
 - **Breaking Changes**: Version control with consumer notification workflow
 
 #### 👥 Role-Based Access Control
@@ -117,22 +138,23 @@ Real-time dashboards for:
 
 ## GitHub About Section
 
-Implements the Enterprise Architecture Guide for the Snowflake Data Cloud — demonstrating data contracts, semantic models for Cortex AI, runtime governance, and observability dashboards. "Business intent must be explicit, portable, and enforceable."
+Built on **Snowflake Horizon** — demonstrating data contracts, Cortex Analyst semantic models, Object Tagging, Tag-Based Masking, Dynamic Tables, and observability dashboards. "Business intent must be explicit, portable, and enforceable."
 
 ---
 
 ## One-Liner
 
-Enterprise-grade data contracts for Snowflake: enforce intent, not assumptions, with semantic models, governance tags, and real-time observability.
+Enterprise-grade data contracts for Snowflake Horizon: enforce intent with Object Tagging, Cortex Analyst semantic models, Tag-Based Masking, and real-time observability.
 
 ---
 
 ## Topics/Tags
 
 ```
-snowflake, data-contracts, data-governance, cortex-analyst, semantic-models,
-enterprise-architecture, data-quality, sla-monitoring, dynamic-tables,
-ai-governance, data-mesh, data-products, snowflake-intelligence
+snowflake, snowflake-horizon, data-contracts, data-governance, cortex-analyst, 
+semantic-models, object-tagging, tag-based-masking, dynamic-tables,
+enterprise-architecture, data-quality, sla-monitoring, ai-governance, 
+data-mesh, data-products, snowflake-intelligence
 ```
 
 ---

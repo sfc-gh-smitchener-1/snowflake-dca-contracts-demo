@@ -1,6 +1,54 @@
-# Sample Questions for Snowflake Intelligence
+# Sample Questions for Snowflake Intelligence & Cortex Analyst
 
-This document provides proven sample questions that can be asked of Snowflake Intelligence (Cortex Analyst) across two categories:
+This document provides proven sample questions that can be asked of **Snowflake Intelligence** and **Cortex Analyst** using the semantic models defined in this demo.
+
+## Snowflake Cortex AI Features Used
+
+| Cortex Feature | How It's Used |
+|----------------|---------------|
+| **Cortex Analyst** | Semantic models (YAML) define dimensions, measures, and relationships for natural language → SQL |
+| **Snowflake Intelligence** | AI-powered insights using semantic model context |
+| **Cortex LLM Functions** | `SUMMARIZE()`, `COMPLETE()`, `CLASSIFY_TEXT()` for enhanced analysis |
+| **Cortex ML Functions** | `FORECAST()`, `ANOMALY_DETECTION()` for predictive questions |
+
+## Snowflake Horizon Features Used
+
+| Horizon Feature | How It Enables Queries |
+|-----------------|------------------------|
+| **Object Tagging** | Governance questions query `DATA_CLASSIFICATION`, `PII_TYPE`, `AI_ALLOWED` tags |
+| **Access History** | Consumer and lineage questions query usage data |
+| **Dynamic Tables** | Real-time data freshness for accurate answers |
+| **Tag-Based Masking** | PII automatically masked based on role |
+
+## How to Use These Questions
+
+### With Cortex Analyst (SQL)
+
+```sql
+-- Direct Cortex Analyst call
+SELECT SNOWFLAKE.CORTEX.ANALYST(
+    'What was our total revenue last quarter?',
+    '@SEM_DEV.SEM_SALES.SEMANTIC_MODELS/sales_analytics_model.yaml'
+);
+```
+
+### With Snowflake Intelligence (UI)
+
+1. Open Snowflake Intelligence in Snowsight
+2. Select a semantic model from `@SEM_DEV.SEM_SALES.SEMANTIC_MODELS`
+3. Ask questions in natural language
+
+### For AI Agents
+
+Use the `AI_AGENT` role which has access only to AI-safe semantic views:
+
+```sql
+USE ROLE AI_AGENT;
+-- All queries automatically respect AI_ALLOWED tags
+SELECT * FROM SEM_DEV.SEM_SALES.VW_SALES_ANALYTICS;
+```
+
+## Question Categories
 
 1. **Data Analytics Questions** - Business insights from the semantic models
 2. **Trust & Governance Questions** - Contract adherence, data quality, and governance status
