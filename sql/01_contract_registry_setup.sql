@@ -352,36 +352,43 @@ DECLARE
     v_contract_id VARCHAR;
     v_version VARCHAR;
     v_contract_type VARCHAR;
-    v_yaml VARIANT;
+    v_has_contract INT;
+    v_has_product INT;
 BEGIN
-    -- Parse YAML (stored as VARIANT)
-    v_yaml := PARSE_JSON(P_CONTRACT_YAML);
+    -- Check which type of contract this is
+    SELECT COUNT(*) INTO v_has_contract 
+    FROM TABLE(FLATTEN(INPUT => PARSE_JSON(:P_CONTRACT_YAML), PATH => 'contract', OUTER => TRUE)) 
+    WHERE VALUE IS NOT NULL;
     
-    -- Determine contract type and extract ID/version
-    IF v_yaml:contract IS NOT NULL THEN
+    SELECT COUNT(*) INTO v_has_product 
+    FROM TABLE(FLATTEN(INPUT => PARSE_JSON(:P_CONTRACT_YAML), PATH => 'product', OUTER => TRUE)) 
+    WHERE VALUE IS NOT NULL;
+    
+    -- Extract contract details based on type
+    IF v_has_contract > 0 THEN
         v_contract_type := 'data';
-        v_contract_id := v_yaml:contract:id::VARCHAR;
-        v_version := v_yaml:contract:version::VARCHAR;
-    ELSIF v_yaml:product IS NOT NULL THEN
+        SELECT PARSE_JSON(:P_CONTRACT_YAML):contract:id::VARCHAR INTO v_contract_id;
+        SELECT PARSE_JSON(:P_CONTRACT_YAML):contract:version::VARCHAR INTO v_version;
+    ELSIF v_has_product > 0 THEN
         v_contract_type := 'product';
-        v_contract_id := v_yaml:product:id::VARCHAR;
-        v_version := v_yaml:product:version::VARCHAR;
+        SELECT PARSE_JSON(:P_CONTRACT_YAML):product:id::VARCHAR INTO v_contract_id;
+        SELECT PARSE_JSON(:P_CONTRACT_YAML):product:version::VARCHAR INTO v_version;
     ELSE
         RETURN 'ERROR: Invalid contract format - missing contract or product key';
     END IF;
     
-    -- Insert or update contract
+    -- Insert or update contract using MERGE
     MERGE INTO GOVERNANCE.CONTRACT_REGISTRY.CONTRACTS tgt
     USING (SELECT :v_contract_id AS cid, :v_version AS ver) src
     ON tgt.CONTRACT_ID = src.cid AND tgt.VERSION = src.ver
     WHEN MATCHED THEN
         UPDATE SET 
-            YAML_DEFINITION = :v_yaml,
+            YAML_DEFINITION = PARSE_JSON(:P_CONTRACT_YAML),
             UPDATED_AT = CURRENT_TIMESTAMP(),
             UPDATED_BY = CURRENT_USER()
     WHEN NOT MATCHED THEN
         INSERT (CONTRACT_ID, CONTRACT_TYPE, VERSION, STATUS, YAML_DEFINITION)
-        VALUES (:v_contract_id, :v_contract_type, :v_version, 'draft', :v_yaml);
+        VALUES (:v_contract_id, :v_contract_type, :v_version, 'draft', PARSE_JSON(:P_CONTRACT_YAML));
     
     RETURN 'Contract registered: ' || v_contract_id || ' v' || v_version;
 END;
