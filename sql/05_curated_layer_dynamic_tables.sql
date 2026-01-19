@@ -8,7 +8,7 @@
 --   4. Maintain contract adherence through the pipeline
 -- ============================================================================
 
-USE ROLE ACCOUNTADMIN;
+USE ROLE DATA_ADMIN;
 USE DATABASE CURATED_DEV;
 USE WAREHOUSE TRANSFORM_WH;
 

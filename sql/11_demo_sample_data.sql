@@ -6,7 +6,7 @@
 -- Run this AFTER all other setup scripts.
 -- ============================================================================
 
-USE ROLE ACCOUNTADMIN;
+USE ROLE DATA_ADMIN;
 USE DATABASE GOVERNANCE;
 USE SCHEMA CONTRACT_REGISTRY;
 USE WAREHOUSE TRANSFORM_WH;

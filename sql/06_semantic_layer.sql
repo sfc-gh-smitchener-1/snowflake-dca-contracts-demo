@@ -13,7 +13,7 @@
 --  explicit, portable, and enforceable by the data platform itself."
 -- ============================================================================
 
-USE ROLE ACCOUNTADMIN;
+USE ROLE DATA_ADMIN;
 USE WAREHOUSE ANALYTICS_WH;
 
 -- ─────────────────────────────────────────────────────────────────────────────

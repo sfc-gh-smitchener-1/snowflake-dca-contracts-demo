@@ -7,7 +7,7 @@
 --   3. Governance tags applied from contract definitions
 -- ============================================================================
 
-USE ROLE ACCOUNTADMIN;
+USE ROLE DATA_ADMIN;
 USE DATABASE RAW_DEV;
 USE SCHEMA RAW_TPCH;
 USE WAREHOUSE TRANSFORM_WH;

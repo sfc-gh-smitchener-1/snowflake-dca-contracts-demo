@@ -9,7 +9,7 @@
 --   5. Alert management
 -- ============================================================================
 
-USE ROLE ACCOUNTADMIN;
+USE ROLE DATA_ADMIN;
 USE DATABASE GOVERNANCE;
 USE WAREHOUSE ANALYTICS_WH;
 

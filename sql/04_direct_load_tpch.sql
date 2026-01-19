@@ -7,7 +7,7 @@
 --   3. Current record management (mark old records, insert new)
 -- ============================================================================
 
-USE ROLE ACCOUNTADMIN;
+USE ROLE DATA_ADMIN;
 USE DATABASE RAW_DEV;
 USE SCHEMA RAW_TPCH;
 USE WAREHOUSE TRANSFORM_WH;
