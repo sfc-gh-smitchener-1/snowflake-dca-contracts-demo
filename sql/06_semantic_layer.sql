@@ -51,30 +51,23 @@ CREATE OR REPLACE SEMANTIC VIEW SEM_DEV.SEM_SALES.SALES_ANALYTICS
     orders(ORDER_DATE_KEY) REFERENCES dates(DATE_KEY)
   )
   DIMENSIONS (
-    -- Time dimensions
     dates.YEAR AS YEAR,
     dates.QUARTER AS QUARTER,
     dates.MONTH AS MONTH,
     dates.MONTH_NAME AS MONTH_NAME,
-    dates.FULL_DATE AS ORDER_DATE,
-    -- Geographic dimensions
+    dates.FULL_DATE AS FULL_DATE,
     geography.REGION_NAME AS REGION_NAME,
     geography.NATION_NAME AS NATION_NAME,
-    -- Customer dimensions
     customers.MARKET_SEGMENT AS MARKET_SEGMENT,
     customers.CUSTOMER_TIER AS CUSTOMER_TIER,
-    -- Product dimensions
     parts.PART_NAME AS PART_NAME,
     parts.BRAND AS BRAND,
     parts.PART_TYPE AS PART_TYPE,
     parts.PRICE_TIER AS PRICE_TIER,
-    -- Supplier dimensions
     suppliers.SUPPLIER_NAME AS SUPPLIER_NAME,
     suppliers.SUPPLIER_TIER AS SUPPLIER_TIER,
-    -- Order dimensions
     orders.ORDER_STATUS_DESC AS ORDER_STATUS,
     orders.ORDER_PRIORITY AS ORDER_PRIORITY,
-    -- Line item dimensions
     line_items.SHIP_MODE AS SHIP_MODE,
     line_items.RETURN_STATUS AS RETURN_STATUS,
     line_items.DELIVERY_STATUS AS DELIVERY_STATUS
@@ -87,10 +80,11 @@ CREATE OR REPLACE SEMANTIC VIEW SEM_DEV.SEM_SALES.SALES_ANALYTICS
     line_items.total_tax AS SUM(line_items.TAX_AMOUNT),
     line_items.total_quantity AS SUM(line_items.QUANTITY),
     line_items.total_delivery_days AS SUM(line_items.DELIVERY_DAYS),
+    line_items.line_item_count AS COUNT(line_items.LINE_NUMBER),
     orders.total_order_value AS SUM(orders.ORDER_TOTAL),
     orders.order_count AS COUNT(orders.ORDER_KEY),
-    line_items.line_item_count AS COUNT(line_items.LINE_NUMBER),
     customers.customer_count AS COUNT(customers.CUSTOMER_KEY),
+    
     -- Derived metrics
     average_order_value AS orders.total_order_value / NULLIF(orders.order_count, 0),
     average_delivery_days AS line_items.total_delivery_days / NULLIF(line_items.line_item_count, 0)
@@ -139,6 +133,7 @@ CREATE OR REPLACE SEMANTIC VIEW SEM_DEV.SEM_CUSTOMER.CUSTOMER_ANALYTICS
     customer_orders.total_orders_all AS SUM(customer_orders.TOTAL_ORDERS),
     customer_orders.total_tenure_days AS SUM(customer_orders.CUSTOMER_TENURE_DAYS),
     customer_orders.total_recency_days AS SUM(customer_orders.DAYS_SINCE_LAST_ORDER),
+
     -- Derived metrics
     average_lifetime_value AS customer_orders.total_lifetime_value / NULLIF(customers.customer_count, 0),
     average_orders_per_customer AS customer_orders.total_orders_all / NULLIF(customers.customer_count, 0),
@@ -188,6 +183,7 @@ CREATE OR REPLACE SEMANTIC VIEW SEM_DEV.SEM_SALES.SUPPLIER_ANALYTICS
     line_items.line_item_count AS COUNT(line_items.LINE_NUMBER),
     partsupp.total_inventory AS SUM(partsupp.AVAILABLE_QUANTITY),
     partsupp.total_supply_cost AS SUM(partsupp.SUPPLY_COST),
+    
     -- Derived metrics
     average_delivery_days AS line_items.total_delivery_days / NULLIF(line_items.line_item_count, 0),
     average_revenue_per_supplier AS line_items.total_revenue / NULLIF(suppliers.supplier_count, 0)
@@ -237,6 +233,7 @@ CREATE OR REPLACE SEMANTIC VIEW SEM_DEV.SEM_PRODUCT.PRODUCT_ANALYTICS
     line_items.total_quantity_sold AS SUM(line_items.QUANTITY),
     partsupp.total_inventory AS SUM(partsupp.AVAILABLE_QUANTITY),
     partsupp.total_inventory_cost AS SUM(partsupp.SUPPLY_COST),
+    
     -- Derived metrics
     average_retail_price AS parts.total_retail_value / NULLIF(parts.product_count, 0),
     average_supply_cost AS partsupp.total_inventory_cost / NULLIF(partsupp.total_inventory, 0)
@@ -291,6 +288,7 @@ CREATE OR REPLACE SEMANTIC VIEW SEM_DEV.SEM_SALES.GOVERNANCE_ANALYTICS
     consumers.consumer_count AS COUNT(consumers.CONSUMER_ID),
     quality_rules.rule_count AS COUNT(quality_rules.RULE_ID),
     alerts.alert_count AS COUNT(alerts.ALERT_ID),
+    
     -- Derived metrics
     average_consumers_per_contract AS consumers.consumer_count / NULLIF(contracts.contract_count, 0),
     average_rules_per_contract AS quality_rules.rule_count / NULLIF(contracts.contract_count, 0)
