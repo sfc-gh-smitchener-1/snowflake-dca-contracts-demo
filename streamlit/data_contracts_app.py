@@ -167,35 +167,66 @@ def get_session():
     return get_active_session()
 
 def call_cortex_analyst(prompt: str, semantic_view: str):
-    """Calls the Cortex Analyst via SQL function for Streamlit in Snowflake."""
+    """Calls the Cortex Analyst API using the SiS session token."""
     session = get_session()
     
     try:
-        # Use the CORTEX.ANALYST SQL function instead of REST API
-        # This works natively in Snowflake without needing tokens
-        escaped_prompt = prompt.replace("'", "''")
-        escaped_view = semantic_view.replace("'", "''")
+        # Get environment details from session
+        host = session.connection.host
         
-        # Call Cortex Analyst via SQL
-        result = session.sql(f"""
-            SELECT SNOWFLAKE.CORTEX.ANALYST(
-                '{escaped_prompt}',
-                SEMANTIC_VIEW => '{escaped_view}'
-            ) AS response
-        """).to_pandas()
+        # API Endpoint for Cortex Analyst
+        url = f"https://{host}/api/v2/cortex/analyst/message"
         
-        if not result.empty:
-            response_json = json.loads(result['RESPONSE'].iloc[0])
-            return response_json, None
+        # Payload for Semantic Views
+        request_body = {
+            "messages": [
+                {"role": "user", "content": [{"type": "text", "text": prompt}]}
+            ],
+            "semantic_model_file": f"semantic_view://{semantic_view}"
+        }
+        
+        # Try different ways to get the session token
+        token = None
+        
+        # Method 1: Direct _token attribute
+        if hasattr(session, '_conn') and hasattr(session._conn, '_token'):
+            token = session._conn._token
+        # Method 2: connection.token
+        elif hasattr(session, 'connection') and hasattr(session.connection, 'token'):
+            token = session.connection.token
+        # Method 3: _session_token
+        elif hasattr(session, '_session_token'):
+            token = session._session_token
+        # Method 4: From connection._rest
+        elif hasattr(session, 'connection') and hasattr(session.connection, '_rest'):
+            if hasattr(session.connection._rest, '_token'):
+                token = session.connection._rest._token
+        # Method 5: From _conn.rest
+        elif hasattr(session, '_conn') and hasattr(session._conn, 'rest'):
+            if hasattr(session._conn.rest, 'token'):
+                token = session._conn.rest.token
+        
+        if not token:
+            # Fall back to CORTEX.COMPLETE approach
+            return call_cortex_complete_fallback(prompt, semantic_view)
+        
+        headers = {
+            "Authorization": f'Snowflake Token="{token}"',
+            "Content-Type": "application/json",
+            "Accept": "application/json"
+        }
+
+        response = requests.post(url, json=request_body, headers=headers)
+        
+        if response.status_code == 200:
+            return response.json(), None
         else:
-            return None, "No response from Cortex Analyst"
+            # Fall back on API error
+            return call_cortex_complete_fallback(prompt, semantic_view)
             
     except Exception as e:
-        error_msg = str(e)
-        # If CORTEX.ANALYST function doesn't exist, fall back to COMPLETE
-        if "Unknown function" in error_msg or "does not exist" in error_msg:
-            return call_cortex_complete_fallback(prompt, semantic_view)
-        return None, f"Error: {error_msg}"
+        # Fall back on any error
+        return call_cortex_complete_fallback(prompt, semantic_view)
 
 def call_cortex_complete_fallback(prompt: str, semantic_view: str):
     """Fallback using CORTEX.COMPLETE to generate SQL for semantic views."""
