@@ -445,12 +445,17 @@ def run_cortex_analyst(question: str, semantic_view: str) -> tuple:
                 'You are a Snowflake SQL expert. Generate a query for a SEMANTIC VIEW.
 
 Semantic View: {escaped_view}
+
+IMPORTANT: Use ONLY these exact column names (case-sensitive):
 {escaped_info}
 
-For semantic views, you can query them like regular views but with special syntax:
-- SELECT dimensions and metrics directly
-- Use AGGREGATE BY for grouping
-- Or query as a regular table: SELECT * FROM {escaped_view} LIMIT 100
+CRITICAL RULES:
+- Use REGION_NAME not REGION
+- Use NATION_NAME not NATION  
+- Use SUPPLIER_NAME not SUPPLIER
+- Use PART_NAME not PRODUCT_NAME
+- Query the semantic view as a regular table: SELECT columns FROM {escaped_view}
+- Always use GROUP BY when aggregating
 
 Generate a simple, valid SQL query. Return ONLY the SQL, no explanations.
 
@@ -612,34 +617,34 @@ def render_cortex_page():
         
         sample_questions = {
             "SEM_DEV.SEM_SALES.SALES_ANALYTICS": [
-                "What is the total revenue by region?",
-                "Show me the top 10 brands by revenue",
-                "What is our on-time delivery rate?",
-                "Which market segments have the most orders?"
+                "Show total revenue grouped by REGION_NAME",
+                "Show the top 10 BRAND values by total revenue",
+                "What is the average delivery days?",
+                "Show order count by MARKET_SEGMENT"
             ],
             "SEM_DEV.SEM_CUSTOMER.CUSTOMER_ANALYTICS": [
-                "How many customers are at risk of churning?",
-                "What is the average customer lifetime value?",
-                "Show me customers by activity status",
-                "Which regions have the most customers?"
+                "Show customer count grouped by ACTIVITY_STATUS",
+                "What is the average lifetime value?",
+                "Show customers grouped by CUSTOMER_TIER",
+                "Show customer count by REGION_NAME"
             ],
             "SEM_DEV.SEM_PRODUCT.PRODUCT_ANALYTICS": [
-                "Which products have the highest gross margin?",
-                "Show me total inventory by brand",
-                "What are our top 10 selling products?",
-                "Which products have high return rates?"
+                "Show total revenue by BRAND",
+                "Show total inventory by PRICE_TIER",
+                "What are the top 10 PART_NAME by quantity sold?",
+                "Show product count by MANUFACTURER"
             ],
             "SEM_DEV.SEM_SALES.SUPPLIER_ANALYTICS": [
-                "Which suppliers have the best on-time delivery?",
-                "Show me supplier performance by region",
-                "What is the average delivery time by supplier?",
-                "Which suppliers have the highest return rates?"
+                "Show average delivery days by SUPPLIER_NAME",
+                "Show total revenue by REGION_NAME",
+                "What is the total inventory by SUPPLIER_TIER?",
+                "Show supplier count by NATION_NAME"
             ],
             "SEM_DEV.SEM_GOVERNANCE.GOVERNANCE_ANALYTICS": [
-                "How many active contracts do we have?",
-                "Show me all open alerts",
-                "Which contracts have the most consumers?",
-                "How many critical alerts are there?"
+                "Show contract count grouped by STATUS",
+                "Show all alerts grouped by ALERT_TYPE",
+                "Show consumer count by CONTRACT_TYPE",
+                "Show rule count grouped by SEVERITY"
             ]
         }
         
