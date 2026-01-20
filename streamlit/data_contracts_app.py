@@ -167,48 +167,77 @@ def get_session():
     return get_active_session()
 
 def call_cortex_analyst(prompt: str, semantic_view: str):
-    """Calls the Cortex Analyst API using the SiS session token."""
+    """Calls the Cortex Analyst API using the Snowflake session."""
     session = get_session()
     
     try:
-        # Get environment details from session
-        host = session.connection.host
+        # Get the REST client from the Snowpark session connection
+        # This is the internal way SiS apps can make authenticated API calls
+        rest = session._conn._rest
         
-        # API Endpoint for Cortex Analyst
-        url = f"https://{host}/api/v2/cortex/analyst/message"
+        # API Endpoint for Cortex Analyst (relative path for internal calls)
+        endpoint = "/api/v2/cortex/analyst/message"
         
         # Payload for Semantic Views
         request_body = {
             "messages": [
                 {"role": "user", "content": [{"type": "text", "text": prompt}]}
             ],
-            "semantic_model_file": f"semantic_view://{semantic_view}"
+            "semantic_view": semantic_view
         }
         
-        # Try different ways to get the session token
-        token = None
+        # Use the internal REST client to make the call
+        # This handles authentication automatically
+        response = rest.request(
+            url=endpoint,
+            method="POST",
+            body=request_body,
+            headers={"Content-Type": "application/json"}
+        )
         
-        # Method 1: Direct _token attribute
-        if hasattr(session, '_conn') and hasattr(session._conn, '_token'):
-            token = session._conn._token
-        # Method 2: connection.token
-        elif hasattr(session, 'connection') and hasattr(session.connection, 'token'):
-            token = session.connection.token
-        # Method 3: _session_token
-        elif hasattr(session, '_session_token'):
-            token = session._session_token
-        # Method 4: From connection._rest
-        elif hasattr(session, 'connection') and hasattr(session.connection, '_rest'):
-            if hasattr(session.connection._rest, '_token'):
-                token = session.connection._rest._token
-        # Method 5: From _conn.rest
-        elif hasattr(session, '_conn') and hasattr(session._conn, 'rest'):
-            if hasattr(session._conn.rest, 'token'):
-                token = session._conn.rest.token
+        if response and 'message' in response:
+            return response, None
+        else:
+            return call_cortex_complete_fallback(prompt, semantic_view)
+            
+    except AttributeError as e:
+        # If _rest doesn't exist, try the external API approach
+        return call_cortex_analyst_external(prompt, semantic_view)
+    except Exception as e:
+        return call_cortex_complete_fallback(prompt, semantic_view)
+
+def call_cortex_analyst_external(prompt: str, semantic_view: str):
+    """Calls Cortex Analyst using external REST API with token."""
+    session = get_session()
+    
+    try:
+        # Try to get host and token
+        host = session.connection.host if hasattr(session, 'connection') else None
+        
+        # Try various ways to get the token
+        token = None
+        try:
+            token = session._conn._rest._token
+        except:
+            pass
         
         if not token:
-            # Fall back to CORTEX.COMPLETE approach
+            try:
+                token = session._conn._token
+            except:
+                pass
+        
+        if not host or not token:
             return call_cortex_complete_fallback(prompt, semantic_view)
+        
+        url = f"https://{host}/api/v2/cortex/analyst/message"
+        
+        request_body = {
+            "messages": [
+                {"role": "user", "content": [{"type": "text", "text": prompt}]}
+            ],
+            "semantic_view": semantic_view
+        }
         
         headers = {
             "Authorization": f'Snowflake Token="{token}"',
@@ -221,11 +250,9 @@ def call_cortex_analyst(prompt: str, semantic_view: str):
         if response.status_code == 200:
             return response.json(), None
         else:
-            # Fall back on API error
             return call_cortex_complete_fallback(prompt, semantic_view)
             
     except Exception as e:
-        # Fall back on any error
         return call_cortex_complete_fallback(prompt, semantic_view)
 
 def call_cortex_complete_fallback(prompt: str, semantic_view: str):
@@ -240,22 +267,36 @@ def call_cortex_complete_fallback(prompt: str, semantic_view: str):
         escaped_view = semantic_view.replace("'", "''")
         escaped_info = view_info.replace("'", "''")
         
-        # Use CORTEX.COMPLETE to generate SQL
+        # Use CORTEX.COMPLETE to generate SQL using SEMANTIC_VIEW() construct
         result = session.sql(f"""
             SELECT SNOWFLAKE.CORTEX.COMPLETE(
                 'llama3.1-70b',
-                'Generate a SQL query for this Snowflake SEMANTIC VIEW.
+                'Generate a SQL query using the SEMANTIC_VIEW() function.
 
 SEMANTIC VIEW: {escaped_view}
 
 {escaped_info}
 
+USE THIS EXACT PATTERN - the SEMANTIC_VIEW() function:
+SELECT * FROM SEMANTIC_VIEW(
+  {escaped_view}
+  DIMENSIONS dimension1, dimension2
+  METRICS metric1, metric2
+)
+
 RULES:
-1. METRICS are pre-aggregated - SELECT them directly, do not wrap in SUM/AVG/COUNT
-2. DIMENSIONS are for grouping - use in SELECT and GROUP BY
-3. Query pattern: SELECT dimension, metric FROM {escaped_view} GROUP BY dimension
-4. Do NOT use table prefixes
-5. Return ONLY the SQL query, no explanation
+1. Always use SEMANTIC_VIEW() function - this is the ONLY correct way
+2. List dimensions after DIMENSIONS keyword (comma separated)
+3. List metrics after METRICS keyword (comma separated)
+4. Use exact names from the lists above
+5. Return ONLY the SQL query
+
+EXAMPLES:
+-- Get revenue by region:
+SELECT * FROM SEMANTIC_VIEW({escaped_view} DIMENSIONS REGION_NAME METRICS total_revenue)
+
+-- Get customer count by segment:
+SELECT * FROM SEMANTIC_VIEW({escaped_view} DIMENSIONS MARKET_SEGMENT METRICS customer_count)
 
 Question: {escaped_prompt}
 
