@@ -421,41 +421,53 @@ def run_cortex_analyst(question: str, semantic_view: str) -> tuple:
             pass
         
         if not view_info:
-            # Fallback context - provide clear column names for the LLM
+            # Fallback context - semantic views have DIMENSIONS (for GROUP BY) and METRICS (pre-aggregated)
             view_contexts = {
-                'SALES_ANALYTICS': '''COLUMNS you can use in SELECT and GROUP BY (exact names, case-sensitive):
-- YEAR, QUARTER, MONTH, MONTH_NAME, FULL_DATE
-- REGION_NAME, NATION_NAME
-- MARKET_SEGMENT, CUSTOMER_TIER
-- PART_NAME, BRAND, PART_TYPE, PRICE_TIER
-- SUPPLIER_NAME, SUPPLIER_TIER
-- ORDER_STATUS, ORDER_PRIORITY, SHIP_MODE, RETURN_STATUS, DELIVERY_STATUS
-- EXTENDED_PRICE (revenue), DISCOUNTED_PRICE, DISCOUNT_AMOUNT, TAX_AMOUNT
-- QUANTITY, DELIVERY_DAYS, ORDER_TOTAL''',
-                'CUSTOMER_ANALYTICS': '''COLUMNS you can use in SELECT and GROUP BY (exact names, case-sensitive):
-- MARKET_SEGMENT, CUSTOMER_TIER, BALANCE_STATUS
-- REGION_NAME, NATION_NAME
-- ACTIVITY_STATUS
-- FIRST_ORDER_DATE, LAST_ORDER_DATE
-- TOTAL_ORDERS, TOTAL_REVENUE, AVG_ORDER_VALUE
-- TOTAL_QUANTITY, DAYS_SINCE_LAST_ORDER, CUSTOMER_TENURE_DAYS''',
-                'SUPPLIER_ANALYTICS': '''COLUMNS you can use in SELECT and GROUP BY (exact names, case-sensitive):
-- SUPPLIER_NAME, SUPPLIER_TIER
-- NATION_NAME, REGION_NAME
-- DELIVERY_STATUS, RETURN_STATUS
-- EXTENDED_PRICE, QUANTITY, DELIVERY_DAYS
-- AVAILABLE_QUANTITY, SUPPLY_COST''',
-                'PRODUCT_ANALYTICS': '''COLUMNS you can use in SELECT and GROUP BY (exact names, case-sensitive):
-- PART_NAME, BRAND, MANUFACTURER
-- PART_TYPE, SIZE_CATEGORY, PRICE_TIER, CONTAINER_TYPE
-- RETURN_STATUS
-- EXTENDED_PRICE, DISCOUNTED_PRICE, QUANTITY
-- RETAIL_PRICE, SUPPLY_COST, AVAILABLE_QUANTITY''',
-                'GOVERNANCE_ANALYTICS': '''COLUMNS you can use in SELECT and GROUP BY (exact names, case-sensitive):
-- CONTRACT_ID, CONTRACT_TYPE, STATUS
-- PRODUCER_SYSTEM, CONSUMER_SYSTEM, USE_CASE
-- RULE_NAME, SEVERITY, ENABLED
-- ALERT_TYPE, TITLE, VERSION'''
+                'SALES_ANALYTICS': '''This is a SEMANTIC VIEW. Use these exact column names:
+
+DIMENSIONS (for SELECT, WHERE, GROUP BY):
+YEAR, QUARTER, MONTH, MONTH_NAME, FULL_DATE, REGION_NAME, NATION_NAME, MARKET_SEGMENT, CUSTOMER_TIER, PART_NAME, BRAND, PART_TYPE, PRICE_TIER, SUPPLIER_NAME, SUPPLIER_TIER, ORDER_STATUS, ORDER_PRIORITY, SHIP_MODE, RETURN_STATUS, DELIVERY_STATUS
+
+METRICS (pre-aggregated, just SELECT them directly):
+total_revenue, total_net_revenue, total_discounts, total_tax, total_quantity, total_delivery_days, line_item_count, total_order_value, order_count, customer_count, average_order_value, average_delivery_days
+
+Example: SELECT REGION_NAME, total_revenue FROM view GROUP BY REGION_NAME''',
+                'CUSTOMER_ANALYTICS': '''This is a SEMANTIC VIEW. Use these exact column names:
+
+DIMENSIONS (for SELECT, WHERE, GROUP BY):
+MARKET_SEGMENT, CUSTOMER_TIER, BALANCE_STATUS, REGION_NAME, NATION_NAME, ACTIVITY_STATUS, FIRST_ORDER_DATE, LAST_ORDER_DATE
+
+METRICS (pre-aggregated, just SELECT them directly):
+customer_count, total_lifetime_value, total_orders_all, total_tenure_days, total_recency_days, average_lifetime_value, average_orders_per_customer, average_recency, average_tenure
+
+Example: SELECT ACTIVITY_STATUS, customer_count FROM view GROUP BY ACTIVITY_STATUS''',
+                'SUPPLIER_ANALYTICS': '''This is a SEMANTIC VIEW. Use these exact column names:
+
+DIMENSIONS (for SELECT, WHERE, GROUP BY):
+SUPPLIER_NAME, SUPPLIER_TIER, NATION_NAME, REGION_NAME, DELIVERY_STATUS, RETURN_STATUS
+
+METRICS (pre-aggregated, just SELECT them directly):
+supplier_count, total_revenue, total_quantity, total_delivery_days, line_item_count, total_inventory, total_supply_cost, average_delivery_days, average_revenue_per_supplier
+
+Example: SELECT SUPPLIER_NAME, total_revenue FROM view GROUP BY SUPPLIER_NAME''',
+                'PRODUCT_ANALYTICS': '''This is a SEMANTIC VIEW. Use these exact column names:
+
+DIMENSIONS (for SELECT, WHERE, GROUP BY):
+PART_NAME, BRAND, MANUFACTURER, PART_TYPE, SIZE_CATEGORY, PRICE_TIER, CONTAINER_TYPE, RETURN_STATUS
+
+METRICS (pre-aggregated, just SELECT them directly):
+product_count, total_retail_value, total_revenue, total_net_revenue, total_quantity_sold, total_inventory, total_inventory_cost, average_retail_price, average_supply_cost
+
+Example: SELECT BRAND, total_revenue FROM view GROUP BY BRAND''',
+                'GOVERNANCE_ANALYTICS': '''This is a SEMANTIC VIEW. Use these exact column names:
+
+DIMENSIONS (for SELECT, WHERE, GROUP BY):
+CONTRACT_ID, CONTRACT_TYPE, STATUS, PRODUCER_SYSTEM, CONSUMER_SYSTEM, USE_CASE, RULE_NAME, SEVERITY, ENABLED, ALERT_TYPE, TITLE
+
+METRICS (pre-aggregated, just SELECT them directly):
+contract_count, rule_count, alert_count
+
+Example: SELECT STATUS, contract_count FROM view GROUP BY STATUS'''
             }
             for key, ctx in view_contexts.items():
                 if key in semantic_view.upper():
@@ -470,18 +482,18 @@ def run_cortex_analyst(question: str, semantic_view: str) -> tuple:
         result = session.sql(f"""
             SELECT SNOWFLAKE.CORTEX.COMPLETE(
                 'llama3.1-70b',
-                'Generate a SQL SELECT query for this Snowflake semantic view.
+                'Generate a SQL query for this Snowflake SEMANTIC VIEW.
 
 SEMANTIC VIEW: {escaped_view}
 
 {escaped_info}
 
-RULES:
-1. Query format: SELECT column_name FROM {escaped_view} WHERE/GROUP BY/ORDER BY
-2. Use ONLY the exact column names listed above
-3. Do NOT use any table prefixes or aliases (wrong: line_items.QUANTITY, right: QUANTITY)
-4. For totals use SUM(column), for averages use AVG(column), for counts use COUNT(*)
-5. Return ONLY the SQL query, no explanation
+CRITICAL RULES:
+1. METRICS are pre-aggregated - do NOT use SUM/AVG/COUNT on them, just SELECT them directly
+2. DIMENSIONS are for grouping - use them in SELECT and GROUP BY
+3. Query pattern: SELECT dimension, metric FROM {escaped_view} GROUP BY dimension
+4. Do NOT use table prefixes (wrong: line_items.total_revenue, right: total_revenue)
+5. Return ONLY the SQL query
 
 Question: {escaped_question}
 
@@ -641,34 +653,34 @@ def render_cortex_page():
         
         sample_questions = {
             "SEM_DEV.SEM_SALES.SALES_ANALYTICS": [
-                "What is the total revenue by REGION_NAME?",
-                "Show me the top 10 brands by total EXTENDED_PRICE",
-                "What is the average DELIVERY_DAYS?",
-                "How many orders are there by MARKET_SEGMENT?"
+                "Show total_revenue by REGION_NAME",
+                "What are the top 10 BRANDs by total_revenue?",
+                "Show average_delivery_days by MARKET_SEGMENT",
+                "What is the order_count by YEAR?"
             ],
             "SEM_DEV.SEM_CUSTOMER.CUSTOMER_ANALYTICS": [
-                "How many customers are there by ACTIVITY_STATUS?",
-                "What is the average TOTAL_REVENUE per customer?",
-                "Show customer count by CUSTOMER_TIER",
-                "How many customers are there in each REGION_NAME?"
+                "Show customer_count by ACTIVITY_STATUS",
+                "What is the average_lifetime_value by CUSTOMER_TIER?",
+                "Show total_lifetime_value by REGION_NAME",
+                "What is customer_count by MARKET_SEGMENT?"
             ],
             "SEM_DEV.SEM_PRODUCT.PRODUCT_ANALYTICS": [
-                "What is the total EXTENDED_PRICE by BRAND?",
-                "Show AVAILABLE_QUANTITY by PRICE_TIER",
-                "What are the top 10 products by QUANTITY sold?",
-                "How many products are there by MANUFACTURER?"
+                "Show total_revenue by BRAND",
+                "What is total_inventory by PRICE_TIER?",
+                "Show product_count by MANUFACTURER",
+                "What are the top 10 BRANDs by total_quantity_sold?"
             ],
             "SEM_DEV.SEM_SALES.SUPPLIER_ANALYTICS": [
-                "What is the average DELIVERY_DAYS by SUPPLIER_NAME?",
-                "Show total EXTENDED_PRICE by REGION_NAME",
-                "What is the total AVAILABLE_QUANTITY by SUPPLIER_TIER?",
-                "How many records are there by NATION_NAME?"
+                "Show average_delivery_days by SUPPLIER_NAME",
+                "What is total_revenue by REGION_NAME?",
+                "Show total_inventory by SUPPLIER_TIER",
+                "What is supplier_count by NATION_NAME?"
             ],
             "SEM_DEV.SEM_GOVERNANCE.GOVERNANCE_ANALYTICS": [
-                "How many contracts are there by STATUS?",
-                "Show the count of alerts by ALERT_TYPE",
-                "How many contracts are there by CONTRACT_TYPE?",
-                "What is the breakdown by SEVERITY?"
+                "Show contract_count by STATUS",
+                "What is alert_count by ALERT_TYPE?",
+                "Show contract_count by CONTRACT_TYPE",
+                "What is rule_count by SEVERITY?"
             ]
         }
         
