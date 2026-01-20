@@ -421,13 +421,29 @@ def run_cortex_analyst(question: str, semantic_view: str) -> tuple:
             pass
         
         if not view_info:
-            # Fallback context based on view name - matches actual semantic view definitions
+            # Fallback context - use simple column names that work with semantic views
+            # Note: Query semantic views like regular tables, metrics become columns
             view_contexts = {
-                'SALES_ANALYTICS': 'Dimensions: YEAR, QUARTER, MONTH, MONTH_NAME, FULL_DATE, REGION_NAME, NATION_NAME, MARKET_SEGMENT, CUSTOMER_TIER, PART_NAME, BRAND, PART_TYPE, PRICE_TIER, SUPPLIER_NAME, SUPPLIER_TIER, ORDER_STATUS, ORDER_PRIORITY, SHIP_MODE, RETURN_STATUS, DELIVERY_STATUS. Metrics: line_items.total_revenue, line_items.total_net_revenue, line_items.total_quantity, orders.order_count, average_order_value, average_delivery_days',
-                'CUSTOMER_ANALYTICS': 'Dimensions: MARKET_SEGMENT, CUSTOMER_TIER, BALANCE_STATUS, REGION_NAME, NATION_NAME, ACTIVITY_STATUS, FIRST_ORDER_DATE, LAST_ORDER_DATE. Metrics: customers.customer_count, customer_orders.total_lifetime_value, average_lifetime_value, average_orders_per_customer, average_recency, average_tenure',
-                'SUPPLIER_ANALYTICS': 'Dimensions: SUPPLIER_NAME, SUPPLIER_TIER, NATION_NAME, REGION_NAME, DELIVERY_STATUS, RETURN_STATUS. Metrics: suppliers.supplier_count, line_items.total_revenue, line_items.total_quantity, average_delivery_days, partsupp.total_inventory',
-                'PRODUCT_ANALYTICS': 'Dimensions: PART_NAME, BRAND, MANUFACTURER, PART_TYPE, SIZE_CATEGORY, PRICE_TIER, CONTAINER_TYPE, RETURN_STATUS. Metrics: parts.product_count, line_items.total_revenue, line_items.total_quantity_sold, partsupp.total_inventory, average_retail_price',
-                'GOVERNANCE_ANALYTICS': 'Dimensions: CONTRACT_ID, CONTRACT_TYPE, STATUS, PRODUCER_SYSTEM, CONSUMER_SYSTEM, USE_CASE, RULE_NAME, SEVERITY, ENABLED, ALERT_TYPE, TITLE. Metrics: contracts.contract_count, consumers.consumer_count, quality_rules.rule_count, alerts.alert_count'
+                'SALES_ANALYTICS': '''Available columns for SELECT and GROUP BY:
+Dimensions: YEAR, QUARTER, MONTH, MONTH_NAME, FULL_DATE, REGION_NAME, NATION_NAME, MARKET_SEGMENT, CUSTOMER_TIER, PART_NAME, BRAND, PART_TYPE, PRICE_TIER, SUPPLIER_NAME, SUPPLIER_TIER, ORDER_STATUS, ORDER_PRIORITY, SHIP_MODE, RETURN_STATUS, DELIVERY_STATUS
+Facts (use with SUM/AVG): EXTENDED_PRICE, DISCOUNTED_PRICE, DISCOUNT_AMOUNT, TAX_AMOUNT, QUANTITY, DELIVERY_DAYS, ORDER_TOTAL
+Example: SELECT REGION_NAME, SUM(EXTENDED_PRICE) as revenue FROM semantic_view GROUP BY REGION_NAME''',
+                'CUSTOMER_ANALYTICS': '''Available columns for SELECT and GROUP BY:
+Dimensions: MARKET_SEGMENT, CUSTOMER_TIER, BALANCE_STATUS, REGION_NAME, NATION_NAME, ACTIVITY_STATUS, FIRST_ORDER_DATE, LAST_ORDER_DATE
+Facts (use with SUM/AVG/COUNT): TOTAL_ORDERS, TOTAL_REVENUE, AVG_ORDER_VALUE, TOTAL_QUANTITY, DAYS_SINCE_LAST_ORDER, CUSTOMER_TENURE_DAYS
+Example: SELECT ACTIVITY_STATUS, COUNT(*) as cnt FROM semantic_view GROUP BY ACTIVITY_STATUS''',
+                'SUPPLIER_ANALYTICS': '''Available columns for SELECT and GROUP BY:
+Dimensions: SUPPLIER_NAME, SUPPLIER_TIER, NATION_NAME, REGION_NAME, DELIVERY_STATUS, RETURN_STATUS
+Facts (use with SUM/AVG): EXTENDED_PRICE, QUANTITY, DELIVERY_DAYS, AVAILABLE_QUANTITY, SUPPLY_COST
+Example: SELECT SUPPLIER_NAME, SUM(EXTENDED_PRICE) as revenue FROM semantic_view GROUP BY SUPPLIER_NAME''',
+                'PRODUCT_ANALYTICS': '''Available columns for SELECT and GROUP BY:
+Dimensions: PART_NAME, BRAND, MANUFACTURER, PART_TYPE, SIZE_CATEGORY, PRICE_TIER, CONTAINER_TYPE, RETURN_STATUS
+Facts (use with SUM/AVG): EXTENDED_PRICE, DISCOUNTED_PRICE, QUANTITY, RETAIL_PRICE, SUPPLY_COST, AVAILABLE_QUANTITY
+Example: SELECT BRAND, SUM(QUANTITY) as total_qty FROM semantic_view GROUP BY BRAND''',
+                'GOVERNANCE_ANALYTICS': '''Available columns for SELECT and GROUP BY:
+Dimensions: CONTRACT_ID, CONTRACT_TYPE, STATUS, PRODUCER_SYSTEM, CONSUMER_SYSTEM, USE_CASE, RULE_NAME, SEVERITY, ENABLED, ALERT_TYPE, TITLE
+Facts: VERSION
+Example: SELECT STATUS, COUNT(*) as cnt FROM semantic_view GROUP BY STATUS'''
             }
             for key, ctx in view_contexts.items():
                 if key in semantic_view.upper():
@@ -442,22 +458,18 @@ def run_cortex_analyst(question: str, semantic_view: str) -> tuple:
         result = session.sql(f"""
             SELECT SNOWFLAKE.CORTEX.COMPLETE(
                 'llama3.1-70b',
-                'You are a Snowflake SQL expert. Generate a query for a SEMANTIC VIEW.
+                'You are a Snowflake SQL expert. Generate a SELECT query.
 
-Semantic View: {escaped_view}
+Table: {escaped_view}
 
-IMPORTANT: Use ONLY these exact column names (case-sensitive):
 {escaped_info}
 
-CRITICAL RULES:
-- Use REGION_NAME not REGION
-- Use NATION_NAME not NATION  
-- Use SUPPLIER_NAME not SUPPLIER
-- Use PART_NAME not PRODUCT_NAME
-- Query the semantic view as a regular table: SELECT columns FROM {escaped_view}
-- Always use GROUP BY when aggregating
-
-Generate a simple, valid SQL query. Return ONLY the SQL, no explanations.
+RULES:
+1. Query like a regular table: SELECT column FROM {escaped_view}
+2. Use exact column names shown above (case-sensitive)
+3. For aggregations, use SUM(), AVG(), COUNT() with GROUP BY
+4. Do NOT use table prefixes like "line_items." in SELECT
+5. Return ONLY the SQL query, nothing else
 
 Question: {escaped_question}
 
@@ -617,34 +629,34 @@ def render_cortex_page():
         
         sample_questions = {
             "SEM_DEV.SEM_SALES.SALES_ANALYTICS": [
-                "Show total revenue grouped by REGION_NAME",
-                "Show the top 10 BRAND values by total revenue",
-                "What is the average delivery days?",
-                "Show order count by MARKET_SEGMENT"
+                "SELECT REGION_NAME, SUM(EXTENDED_PRICE) as revenue FROM the view GROUP BY REGION_NAME",
+                "SELECT BRAND, SUM(EXTENDED_PRICE) as revenue FROM the view GROUP BY BRAND ORDER BY revenue DESC LIMIT 10",
+                "SELECT AVG(DELIVERY_DAYS) as avg_days FROM the view",
+                "SELECT MARKET_SEGMENT, COUNT(*) as orders FROM the view GROUP BY MARKET_SEGMENT"
             ],
             "SEM_DEV.SEM_CUSTOMER.CUSTOMER_ANALYTICS": [
-                "Show customer count grouped by ACTIVITY_STATUS",
-                "What is the average lifetime value?",
-                "Show customers grouped by CUSTOMER_TIER",
-                "Show customer count by REGION_NAME"
+                "SELECT ACTIVITY_STATUS, COUNT(*) as cnt FROM the view GROUP BY ACTIVITY_STATUS",
+                "SELECT AVG(TOTAL_REVENUE) as avg_ltv FROM the view",
+                "SELECT CUSTOMER_TIER, COUNT(*) as cnt FROM the view GROUP BY CUSTOMER_TIER",
+                "SELECT REGION_NAME, COUNT(*) as cnt FROM the view GROUP BY REGION_NAME"
             ],
             "SEM_DEV.SEM_PRODUCT.PRODUCT_ANALYTICS": [
-                "Show total revenue by BRAND",
-                "Show total inventory by PRICE_TIER",
-                "What are the top 10 PART_NAME by quantity sold?",
-                "Show product count by MANUFACTURER"
+                "SELECT BRAND, SUM(EXTENDED_PRICE) as revenue FROM the view GROUP BY BRAND",
+                "SELECT PRICE_TIER, SUM(AVAILABLE_QUANTITY) as inventory FROM the view GROUP BY PRICE_TIER",
+                "SELECT PART_NAME, SUM(QUANTITY) as qty FROM the view GROUP BY PART_NAME ORDER BY qty DESC LIMIT 10",
+                "SELECT MANUFACTURER, COUNT(*) as cnt FROM the view GROUP BY MANUFACTURER"
             ],
             "SEM_DEV.SEM_SALES.SUPPLIER_ANALYTICS": [
-                "Show average delivery days by SUPPLIER_NAME",
-                "Show total revenue by REGION_NAME",
-                "What is the total inventory by SUPPLIER_TIER?",
-                "Show supplier count by NATION_NAME"
+                "SELECT SUPPLIER_NAME, AVG(DELIVERY_DAYS) as avg_days FROM the view GROUP BY SUPPLIER_NAME",
+                "SELECT REGION_NAME, SUM(EXTENDED_PRICE) as revenue FROM the view GROUP BY REGION_NAME",
+                "SELECT SUPPLIER_TIER, SUM(AVAILABLE_QUANTITY) as inventory FROM the view GROUP BY SUPPLIER_TIER",
+                "SELECT NATION_NAME, COUNT(*) as cnt FROM the view GROUP BY NATION_NAME"
             ],
             "SEM_DEV.SEM_GOVERNANCE.GOVERNANCE_ANALYTICS": [
-                "Show contract count grouped by STATUS",
-                "Show all alerts grouped by ALERT_TYPE",
-                "Show consumer count by CONTRACT_TYPE",
-                "Show rule count grouped by SEVERITY"
+                "SELECT STATUS, COUNT(*) as cnt FROM the view GROUP BY STATUS",
+                "SELECT ALERT_TYPE, COUNT(*) as cnt FROM the view GROUP BY ALERT_TYPE",
+                "SELECT CONTRACT_TYPE, COUNT(*) as cnt FROM the view GROUP BY CONTRACT_TYPE",
+                "SELECT SEVERITY, COUNT(*) as cnt FROM the view GROUP BY SEVERITY"
             ]
         }
         
