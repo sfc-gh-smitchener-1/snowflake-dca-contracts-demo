@@ -285,7 +285,7 @@ contract:
   status: active  # draft | review | approved | active | deprecated | retired
   
   producer:
-    system: CRM_SALESFORCE
+    system: EXTERNAL_CRM
     team: Customer Data Platform
     owner: cdp-team@company.com
     slack_channel: "#cdp-data-contracts"
@@ -423,8 +423,8 @@ contract:
   # ─────────────────────────────────────────────────────────
   lineage:
     source_systems:
-      - name: Salesforce CRM
-        connection: SFDC_API
+      - name: External CRM
+        connection: CRM_API
         extraction: CDC
         
     downstream_dependencies:
@@ -983,14 +983,14 @@ erDiagram
 │  Upstream                     Contract                    Downstream            │
 │                                                                                 │
 │  ┌─────────────────┐                                                            │
-│  │ 📦 Salesforce   │                                                            │
+│  │ 📦 External     │                                                            │
 │  │    CRM API      │─────┐                                                      │
 │  │                 │     │                                                      │
 │  └─────────────────┘     │         ┌─────────────────┐                          │
 │                          │         │                 │      ┌─────────────────┐ │
 │  ┌─────────────────┐     ├────────▶│ 🔵 crm_customer │─────▶│ 🟢 curated_     │ │
-│  │ 📦 Marketo      │     │         │      _v2        │      │  customer_entity│ │
-│  │    Events       │─────┘         │                 │      │      _v1        │ │
+│  │ 📦 Marketing    │     │         │      _v2        │      │  customer_entity│ │
+│  │    Platform     │─────┘         │                 │      │      _v1        │ │
 │  │                 │               │   RAW Layer     │      └────────┬────────┘ │
 │  └─────────────────┘               └─────────────────┘               │          │
 │                                                                      │          │

@@ -2,7 +2,7 @@
 # DATA CONTRACT: CRM Customer Data
 # ============================================================================
 # Producer: Customer Data Platform Team
-# Source: Salesforce CRM
+# Source: External CRM System
 # Updated: 2026-01-18
 # ============================================================================
 
@@ -15,7 +15,7 @@ contract:
   status: active
   
   producer:
-    system: CRM_SALESFORCE
+    system: EXTERNAL_CRM
     team: Customer Data Platform
     owner: cdp-team@company.com
     slack_channel: "#cdp-data-contracts"
@@ -31,7 +31,7 @@ contract:
     columns:
       - name: CUSTOMER_ID
         type: VARCHAR(64)
-        description: "Unique customer identifier from Salesforce"
+        description: "Unique customer identifier from CRM"
         constraints:
           - not_null
           - unique
@@ -123,7 +123,7 @@ contract:
           
       - name: CREATED_AT
         type: TIMESTAMP_NTZ
-        description: "Record creation timestamp in Salesforce"
+        description: "Record creation timestamp in source system"
         constraints:
           - not_null
         tags:
@@ -133,7 +133,7 @@ contract:
           
       - name: UPDATED_AT
         type: TIMESTAMP_NTZ
-        description: "Record last update timestamp in Salesforce"
+        description: "Record last update timestamp in source system"
         constraints: []
         tags:
           DATA_CLASSIFICATION: INTERNAL
@@ -231,8 +231,8 @@ contract:
   # ─────────────────────────────────────────────────────────────────────────
   lineage:
     source_systems:
-      - name: Salesforce CRM
-        connection: SFDC_CDC_CONNECTOR
+      - name: External CRM
+        connection: CRM_CDC_CONNECTOR
         extraction: CDC
         
     downstream_dependencies:

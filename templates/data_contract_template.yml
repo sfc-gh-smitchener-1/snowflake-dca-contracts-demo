@@ -17,7 +17,7 @@ contract:
   status: draft                                # draft | review | approved | active | deprecated | retired
   
   producer:
-    system: <SOURCE_SYSTEM_NAME>               # e.g., CRM_SALESFORCE, ERP_SAP, etc.
+    system: <SOURCE_SYSTEM_NAME>               # e.g., EXTERNAL_CRM, ERP_SYSTEM, etc.
     team: <Team Name>                          # Owning team
     owner: team-email@company.com              # Team contact email
     slack_channel: "#team-data-channel"        # Support channel

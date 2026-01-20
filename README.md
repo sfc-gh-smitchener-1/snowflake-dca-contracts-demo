@@ -194,13 +194,24 @@ This demo showcases a **contract-first data architecture** in Snowflake, impleme
    - Built-in Cortex Analyst integration
    
    Available Semantic Views:
+   
+   **Business Analytics:**
    | Semantic View | Description |
    |---------------|-------------|
    | `SEM_DEV.SEM_SALES.SALES_ANALYTICS` | Revenue, orders, delivery metrics |
    | `SEM_DEV.SEM_CUSTOMER.CUSTOMER_ANALYTICS` | RFM scoring, churn, LTV |
    | `SEM_DEV.SEM_SALES.SUPPLIER_ANALYTICS` | Vendor performance, quality |
    | `SEM_DEV.SEM_PRODUCT.PRODUCT_ANALYTICS` | Inventory, margins, products |
-   | `SEM_DEV.SEM_SALES.GOVERNANCE_ANALYTICS` | Contract health, alerts |
+   
+   **Governance Analytics:**
+   | Semantic View | Description |
+   |---------------|-------------|
+   | `SEM_DEV.SEM_GOVERNANCE.GOVERNANCE_ANALYTICS` | Contracts, consumers, rules, alerts |
+   | `SEM_DEV.SEM_GOVERNANCE.CONTRACT_HEALTH_ANALYTICS` | SLA compliance, health scores |
+   | `SEM_DEV.SEM_GOVERNANCE.DATA_QUALITY_ANALYTICS` | Quality rule results, pass rates |
+   | `SEM_DEV.SEM_GOVERNANCE.ALERT_ANALYTICS` | Open/closed alerts, incident tracking |
+   | `SEM_DEV.SEM_GOVERNANCE.TAG_COVERAGE_ANALYTICS` | Tag coverage percentages |
+   | `SEM_DEV.SEM_GOVERNANCE.CONSUMER_ANALYTICS` | Consumer dependencies, usage |
 
 5. **Continue with remaining scripts**
    ```sql
@@ -417,10 +428,16 @@ Access the app at: **Projects → Streamlit → DATA_CONTRACTS_APP**
 
 | Tab | Description |
 |-----|-------------|
-| 🤖 **Cortex Analyst** | Natural language queries on Semantic Views |
+| 🤖 **Cortex Analyst** | Natural language queries using Cortex Analyst REST API on Semantic Views |
 | 🔮 **Horizon Dashboard** | Governance health with stoplights, charts, alerts |
 | 📊 **Contract Details** | Individual contract exploration |
 | ℹ️ **About** | Architecture overview and resources |
+
+**Key Technical Features:**
+- **Cortex Analyst REST API** - Native integration with `/api/v2/cortex/analyst/message` endpoint
+- **Semantic View Support** - Direct querying of native Snowflake Semantic Views via `semantic_view://` protocol
+- **Auto-generated SQL** - Cortex Analyst generates correct semantic SQL with `AGG()` functions
+- **Fallback to CORTEX.COMPLETE** - Graceful degradation using LLM-powered SQL generation
 
 ### 7. Role-Based Access Control
 
@@ -570,19 +587,37 @@ This demo forces disambiguation at contract definition time, ensuring that:
 This demo uses native **Snowflake Semantic Views** for Cortex Analyst integration:
 
 ```sql
--- Query semantic view directly with SQL
-SELECT * FROM SEMANTIC VIEW SEM_DEV.SEM_SALES.SALES_ANALYTICS
-    WHERE REGION = 'AMERICA'
-    AGGREGATE BY YEAR, QUARTER
-    METRICS total_revenue, order_count;
+-- Query using SEMANTIC_VIEW() function (recommended for AI/Cortex)
+SELECT * FROM SEMANTIC_VIEW(
+    SEM_DEV.SEM_SALES.SALES_ANALYTICS
+    DIMENSIONS REGION_NAME, YEAR
+    METRICS total_revenue, order_count
+);
 
--- Or query as a regular view
-SELECT REGION, YEAR, SUM(GROSS_REVENUE) AS REVENUE
+-- Query with AGG() function for metrics
+SELECT REGION_NAME, AGG(total_revenue) AS revenue
 FROM SEM_DEV.SEM_SALES.SALES_ANALYTICS
-GROUP BY REGION, YEAR;
+GROUP BY REGION_NAME
+ORDER BY revenue DESC;
 
--- List available metrics
+-- List available dimensions and metrics
+SHOW SEMANTIC DIMENSIONS IN SEMANTIC VIEW SEM_DEV.SEM_SALES.SALES_ANALYTICS;
 SHOW SEMANTIC METRICS IN SEMANTIC VIEW SEM_DEV.SEM_SALES.SALES_ANALYTICS;
+```
+
+### Cortex Analyst REST API Integration
+
+The Streamlit app uses the Cortex Analyst REST API for natural language queries:
+
+```python
+# API Endpoint
+POST /api/v2/cortex/analyst/message
+
+# Request body with semantic view
+{
+    "messages": [{"role": "user", "content": [{"type": "text", "text": "What is revenue by region?"}]}],
+    "semantic_view": "SEM_DEV.SEM_SALES.SALES_ANALYTICS"
+}
 ```
 
 See **[Sample Questions](docs/SAMPLE_QUESTIONS.md)** for 125+ proven questions across:

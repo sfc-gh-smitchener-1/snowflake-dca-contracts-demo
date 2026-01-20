@@ -197,17 +197,39 @@ This demo is designed to work with the full Snowflake Cortex AI platform:
 
 ### Cortex Analyst (Natural Language Queries)
 
-Semantic models in `semantic_models/*.yaml` enable natural language SQL generation:
+The Streamlit app uses the **Cortex Analyst REST API** with native Semantic Views:
 
-```sql
--- Users can ask questions in natural language
-SELECT SNOWFLAKE.CORTEX.ANALYST(
-    'What was revenue by region last quarter?',
-    '@SEM_DEV.SEM_SALES.SEMANTIC_MODELS/sales_analytics_model.yaml'
-);
+```python
+# Cortex Analyst REST API call
+POST /api/v2/cortex/analyst/message
+{
+    "messages": [{"role": "user", "content": [{"type": "text", "text": "What was revenue by region?"}]}],
+    "semantic_view": "SEM_DEV.SEM_SALES.SALES_ANALYTICS"
+}
 ```
 
+The API returns structured responses including:
+- Natural language explanation
+- Generated semantic SQL
+- Query results
+
 The Streamlit app's **Cortex Analyst** tab provides an interactive chat interface for these queries.
+
+**Query Semantic Views Directly:**
+
+```sql
+-- Using SEMANTIC_VIEW() function
+SELECT * FROM SEMANTIC_VIEW(
+    SEM_DEV.SEM_SALES.SALES_ANALYTICS
+    DIMENSIONS REGION_NAME, YEAR
+    METRICS total_revenue, order_count
+);
+
+-- Using AGG() for metrics with GROUP BY
+SELECT REGION_NAME, AGG(total_revenue) AS revenue
+FROM SEM_DEV.SEM_SALES.SALES_ANALYTICS
+GROUP BY REGION_NAME;
+```
 
 ### Cortex LLM Functions
 

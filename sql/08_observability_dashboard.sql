@@ -560,6 +560,195 @@ GRANT SELECT, REFERENCES ON SEMANTIC VIEW SEM_DEV.SEM_GOVERNANCE.GOVERNANCE_ANAL
 GRANT SELECT, REFERENCES ON SEMANTIC VIEW SEM_DEV.SEM_GOVERNANCE.GOVERNANCE_ANALYTICS TO ROLE DATA_ANALYST;
 
 -- ─────────────────────────────────────────────────────────────────────────────
+-- SEMANTIC VIEW: Contract Health Analytics
+-- ─────────────────────────────────────────────────────────────────────────────
+-- Provides a semantic view over contract health metrics and SLA compliance
+
+CREATE OR REPLACE SEMANTIC VIEW SEM_DEV.SEM_GOVERNANCE.CONTRACT_HEALTH_ANALYTICS
+  TABLES (
+    health AS GOVERNANCE.OBSERVABILITY.VW_CONTRACT_HEALTH_DASHBOARD PRIMARY KEY (CONTRACT_ID),
+    sla AS GOVERNANCE.CONTRACT_REGISTRY.SLA_DEFINITIONS PRIMARY KEY (SLA_ID),
+    metrics AS GOVERNANCE.CONTRACT_REGISTRY.SLA_METRICS PRIMARY KEY (METRIC_ID)
+  )
+  RELATIONSHIPS (
+    sla(CONTRACT_ID) REFERENCES health(CONTRACT_ID),
+    metrics(CONTRACT_ID) REFERENCES health(CONTRACT_ID)
+  )
+  DIMENSIONS (
+    health.CONTRACT_ID AS CONTRACT_ID,
+    health.OVERALL_HEALTH AS OVERALL_HEALTH,
+    health.FRESHNESS_STATUS AS FRESHNESS_STATUS,
+    health.DATA_CLASSIFICATION AS DATA_CLASSIFICATION,
+    sla.SLA_TYPE AS SLA_TYPE,
+    sla.THRESHOLD_VALUE AS THRESHOLD_VALUE,
+    metrics.IS_VIOLATION AS IS_VIOLATION
+  )
+  METRICS (
+    health.health_score AS AVG(health.QUALITY_SCORE),
+    health.contract_count AS COUNT(health.CONTRACT_ID),
+    health.consumer_total AS SUM(health.CONSUMER_COUNT),
+    metrics.metric_count AS COUNT(metrics.METRIC_ID),
+    metrics.violations AS SUM(CASE WHEN metrics.IS_VIOLATION THEN 1 ELSE 0 END),
+    
+    -- Derived metrics
+    compliance_rate AS (metrics.metric_count - metrics.violations) / NULLIF(metrics.metric_count, 0) * 100
+  )
+  COMMENT = 'Contract health analytics for SLA monitoring and compliance tracking';
+
+GRANT SELECT, REFERENCES ON SEMANTIC VIEW SEM_DEV.SEM_GOVERNANCE.CONTRACT_HEALTH_ANALYTICS TO ROLE DATA_STEWARD;
+GRANT SELECT, REFERENCES ON SEMANTIC VIEW SEM_DEV.SEM_GOVERNANCE.CONTRACT_HEALTH_ANALYTICS TO ROLE DATA_ANALYST;
+
+-- ─────────────────────────────────────────────────────────────────────────────
+-- SEMANTIC VIEW: Data Quality Analytics
+-- ─────────────────────────────────────────────────────────────────────────────
+-- Provides semantic access to quality rule results and trends
+
+CREATE OR REPLACE SEMANTIC VIEW SEM_DEV.SEM_GOVERNANCE.DATA_QUALITY_ANALYTICS
+  TABLES (
+    results AS GOVERNANCE.OBSERVABILITY.VW_QUALITY_RULE_RESULTS PRIMARY KEY (RESULT_ID),
+    rules AS GOVERNANCE.CONTRACT_REGISTRY.QUALITY_RULES PRIMARY KEY (RULE_ID),
+    contracts AS GOVERNANCE.CONTRACT_REGISTRY.CONTRACTS PRIMARY KEY (CONTRACT_ID)
+  )
+  RELATIONSHIPS (
+    results(RULE_ID) REFERENCES rules(RULE_ID),
+    rules(CONTRACT_ID) REFERENCES contracts(CONTRACT_ID)
+  )
+  DIMENSIONS (
+    contracts.CONTRACT_ID AS CONTRACT_ID,
+    contracts.CONTRACT_TYPE AS CONTRACT_TYPE,
+    contracts.PRODUCER_SYSTEM AS PRODUCER_SYSTEM,
+    rules.RULE_NAME AS RULE_NAME,
+    rules.RULE_TYPE AS RULE_TYPE,
+    rules.SEVERITY AS SEVERITY,
+    results.PASSED AS PASSED
+  )
+  METRICS (
+    -- Table-scoped metrics
+    results.check_count AS COUNT(results.RESULT_ID),
+    results.passed_count AS SUM(CASE WHEN results.PASSED THEN 1 ELSE 0 END),
+    results.failed_count AS SUM(CASE WHEN NOT results.PASSED THEN 1 ELSE 0 END),
+    rules.rule_count AS COUNT(rules.RULE_ID),
+    contracts.contract_count AS COUNT(contracts.CONTRACT_ID),
+    
+    -- Derived metrics
+    pass_rate AS results.passed_count / NULLIF(results.check_count, 0) * 100
+  )
+  COMMENT = 'Data quality analytics for rule execution monitoring';
+
+GRANT SELECT, REFERENCES ON SEMANTIC VIEW SEM_DEV.SEM_GOVERNANCE.DATA_QUALITY_ANALYTICS TO ROLE DATA_STEWARD;
+GRANT SELECT, REFERENCES ON SEMANTIC VIEW SEM_DEV.SEM_GOVERNANCE.DATA_QUALITY_ANALYTICS TO ROLE DATA_ANALYST;
+
+-- ─────────────────────────────────────────────────────────────────────────────
+-- SEMANTIC VIEW: Alert Analytics
+-- ─────────────────────────────────────────────────────────────────────────────
+-- Provides semantic access to alerts and incident tracking
+
+CREATE OR REPLACE SEMANTIC VIEW SEM_DEV.SEM_GOVERNANCE.ALERT_ANALYTICS
+  TABLES (
+    alerts AS GOVERNANCE.OBSERVABILITY.ALERTS PRIMARY KEY (ALERT_ID),
+    contracts AS GOVERNANCE.CONTRACT_REGISTRY.CONTRACTS PRIMARY KEY (CONTRACT_ID)
+  )
+  RELATIONSHIPS (
+    alerts(CONTRACT_ID) REFERENCES contracts(CONTRACT_ID)
+  )
+  DIMENSIONS (
+    alerts.ALERT_ID AS ALERT_ID,
+    alerts.ALERT_TYPE AS ALERT_TYPE,
+    alerts.SEVERITY AS SEVERITY,
+    alerts.STATUS AS ALERT_STATUS,
+    alerts.TITLE AS TITLE,
+    contracts.CONTRACT_ID AS CONTRACT_ID,
+    contracts.PRODUCER_SYSTEM AS PRODUCER_SYSTEM,
+    contracts.CONTRACT_TYPE AS CONTRACT_TYPE
+  )
+  METRICS (
+    -- Table-scoped metrics
+    alerts.total_alerts AS COUNT(alerts.ALERT_ID),
+    alerts.open_alerts AS SUM(CASE WHEN alerts.STATUS = 'OPEN' THEN 1 ELSE 0 END),
+    alerts.acknowledged AS SUM(CASE WHEN alerts.STATUS = 'ACKNOWLEDGED' THEN 1 ELSE 0 END),
+    alerts.resolved AS SUM(CASE WHEN alerts.STATUS = 'RESOLVED' THEN 1 ELSE 0 END),
+    alerts.critical_count AS SUM(CASE WHEN alerts.SEVERITY = 'CRITICAL' THEN 1 ELSE 0 END),
+    alerts.warning_count AS SUM(CASE WHEN alerts.SEVERITY = 'WARNING' THEN 1 ELSE 0 END),
+    contracts.affected_contracts AS COUNT(DISTINCT contracts.CONTRACT_ID)
+  )
+  COMMENT = 'Alert analytics for incident monitoring and response tracking';
+
+GRANT SELECT, REFERENCES ON SEMANTIC VIEW SEM_DEV.SEM_GOVERNANCE.ALERT_ANALYTICS TO ROLE DATA_STEWARD;
+GRANT SELECT, REFERENCES ON SEMANTIC VIEW SEM_DEV.SEM_GOVERNANCE.ALERT_ANALYTICS TO ROLE DATA_ANALYST;
+
+-- ─────────────────────────────────────────────────────────────────────────────
+-- SEMANTIC VIEW: Tag Coverage Analytics
+-- ─────────────────────────────────────────────────────────────────────────────
+-- Provides semantic access to governance tag coverage metrics
+
+CREATE OR REPLACE SEMANTIC VIEW SEM_DEV.SEM_GOVERNANCE.TAG_COVERAGE_ANALYTICS
+  TABLES (
+    coverage AS GOVERNANCE.OBSERVABILITY.VW_TAG_COVERAGE PRIMARY KEY (CONTRACT_ID),
+    contracts AS GOVERNANCE.CONTRACT_REGISTRY.CONTRACTS PRIMARY KEY (CONTRACT_ID)
+  )
+  RELATIONSHIPS (
+    coverage(CONTRACT_ID) REFERENCES contracts(CONTRACT_ID)
+  )
+  DIMENSIONS (
+    contracts.CONTRACT_ID AS CONTRACT_ID,
+    contracts.CONTRACT_TYPE AS CONTRACT_TYPE,
+    contracts.PRODUCER_SYSTEM AS PRODUCER_SYSTEM,
+    contracts.STATUS AS CONTRACT_STATUS
+  )
+  METRICS (
+    -- Table-scoped metrics
+    coverage.total_columns AS SUM(coverage.TOTAL_COLUMNS),
+    coverage.classification_coverage AS AVG(coverage.CLASSIFICATION_COVERAGE_PCT),
+    coverage.pii_coverage AS AVG(coverage.PII_COVERAGE_PCT),
+    coverage.ai_coverage AS AVG(coverage.AI_COVERAGE_PCT),
+    contracts.contract_count AS COUNT(contracts.CONTRACT_ID),
+    
+    -- Derived metrics
+    overall_coverage AS (coverage.classification_coverage + coverage.pii_coverage + coverage.ai_coverage) / 3
+  )
+  COMMENT = 'Tag coverage analytics for governance completeness monitoring';
+
+GRANT SELECT, REFERENCES ON SEMANTIC VIEW SEM_DEV.SEM_GOVERNANCE.TAG_COVERAGE_ANALYTICS TO ROLE DATA_STEWARD;
+GRANT SELECT, REFERENCES ON SEMANTIC VIEW SEM_DEV.SEM_GOVERNANCE.TAG_COVERAGE_ANALYTICS TO ROLE DATA_ANALYST;
+
+-- ─────────────────────────────────────────────────────────────────────────────
+-- SEMANTIC VIEW: Consumer Analytics
+-- ─────────────────────────────────────────────────────────────────────────────
+-- Provides semantic access to consumer dependencies and usage
+
+CREATE OR REPLACE SEMANTIC VIEW SEM_DEV.SEM_GOVERNANCE.CONSUMER_ANALYTICS
+  TABLES (
+    consumers AS GOVERNANCE.CONTRACT_REGISTRY.CONTRACT_CONSUMERS PRIMARY KEY (CONSUMER_ID),
+    contracts AS GOVERNANCE.CONTRACT_REGISTRY.CONTRACTS PRIMARY KEY (CONTRACT_ID)
+  )
+  RELATIONSHIPS (
+    consumers(CONTRACT_ID) REFERENCES contracts(CONTRACT_ID)
+  )
+  DIMENSIONS (
+    consumers.CONSUMER_ID AS CONSUMER_ID,
+    consumers.CONSUMER_SYSTEM AS CONSUMER_SYSTEM,
+    consumers.CONSUMER_EMAIL AS CONSUMER_EMAIL,
+    consumers.USE_CASE AS USE_CASE,
+    consumers.ACCESS_LEVEL AS ACCESS_LEVEL,
+    contracts.CONTRACT_ID AS CONTRACT_ID,
+    contracts.CONTRACT_TYPE AS CONTRACT_TYPE,
+    contracts.PRODUCER_SYSTEM AS PRODUCER_SYSTEM
+  )
+  METRICS (
+    -- Table-scoped metrics
+    consumers.consumer_count AS COUNT(consumers.CONSUMER_ID),
+    consumers.unique_systems AS COUNT(DISTINCT consumers.CONSUMER_SYSTEM),
+    contracts.contract_count AS COUNT(DISTINCT contracts.CONTRACT_ID),
+    
+    -- Derived metrics
+    avg_consumers_per_contract AS consumers.consumer_count / NULLIF(contracts.contract_count, 0)
+  )
+  COMMENT = 'Consumer analytics for dependency tracking and impact analysis';
+
+GRANT SELECT, REFERENCES ON SEMANTIC VIEW SEM_DEV.SEM_GOVERNANCE.CONSUMER_ANALYTICS TO ROLE DATA_STEWARD;
+GRANT SELECT, REFERENCES ON SEMANTIC VIEW SEM_DEV.SEM_GOVERNANCE.CONSUMER_ANALYTICS TO ROLE DATA_ANALYST;
+
+-- ─────────────────────────────────────────────────────────────────────────────
 -- VERIFICATION
 -- ─────────────────────────────────────────────────────────────────────────────
 

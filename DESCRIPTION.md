@@ -63,19 +63,26 @@ This demo is built for the full **Snowflake Cortex** AI platform:
 
 | Cortex Capability | How This Demo Uses It |
 |------------------|----------------------|
-| **Cortex Analyst** | YAML semantic models enable natural language → SQL |
+| **Cortex Analyst REST API** | Native semantic view queries via `/api/v2/cortex/analyst/message` |
+| **Semantic Views** | First-class Snowflake objects with dimensions, metrics, relationships |
 | **Snowflake Intelligence** | AI-powered insights on business + governance data |
 | **Cortex LLM Functions** | `COMPLETE()`, `SUMMARIZE()`, `TRANSLATE()` on governed data |
 | **Cortex Search** | Semantic search over product/customer data |
 | **Cortex ML Functions** | `FORECAST()`, `ANOMALY_DETECTION()` on AI-eligible views |
-| **Cortex Fine-Tuning** | Train custom models on `AI_ALLOWED=TRUE` data |
 
-**Semantic Models for Cortex Analyst:**
-- **Sales Analytics** — Revenue, orders, delivery (125+ sample questions)
-- **Customer Analytics** — RFM scoring, segmentation, churn prediction
-- **Product Analytics** — Inventory, margins, performance tiers
-- **Supplier Analytics** — Vendor quality, delivery metrics
-- **Governance Analytics** — Contract health, SLA compliance, trust
+**Business Analytics Semantic Views:**
+- **SEM_DEV.SEM_SALES.SALES_ANALYTICS** — Revenue, orders, delivery (125+ sample questions)
+- **SEM_DEV.SEM_CUSTOMER.CUSTOMER_ANALYTICS** — RFM scoring, segmentation, churn
+- **SEM_DEV.SEM_PRODUCT.PRODUCT_ANALYTICS** — Inventory, margins, performance
+- **SEM_DEV.SEM_SALES.SUPPLIER_ANALYTICS** — Vendor quality, delivery metrics
+
+**Governance Analytics Semantic Views:**
+- **SEM_DEV.SEM_GOVERNANCE.GOVERNANCE_ANALYTICS** — Contract health, rules, alerts overview
+- **SEM_DEV.SEM_GOVERNANCE.CONTRACT_HEALTH_ANALYTICS** — SLA compliance, health scores
+- **SEM_DEV.SEM_GOVERNANCE.DATA_QUALITY_ANALYTICS** — Quality rule results, pass rates
+- **SEM_DEV.SEM_GOVERNANCE.ALERT_ANALYTICS** — Open/closed alerts, incident tracking
+- **SEM_DEV.SEM_GOVERNANCE.TAG_COVERAGE_ANALYTICS** — Tag coverage metrics
+- **SEM_DEV.SEM_GOVERNANCE.CONSUMER_ANALYTICS** — Consumer dependencies, usage patterns
 
 #### 🤖 Building AI Agents
 
@@ -84,10 +91,27 @@ The architecture provides the foundation for **trustworthy AI agents**:
 1. **AI_AGENT role** — Pre-configured access to AI-safe semantic views only
 2. **AI_ALLOWED tags** — Explicit declaration of AI-eligible data
 3. **Pseudonymization** — PII protected via `PSEUDONYMIZED_ONLY` tag
-4. **Semantic models** — YAML definitions for Cortex Analyst natural language queries
+4. **Native Semantic Views** — Cortex Analyst queries semantic views via REST API
 5. **Access History** — Full audit trail of agent data access
 
 > *"Treat AI as a participant, not an exception."*
+
+#### ❄️ Streamlit in Snowflake Application
+
+The demo includes a production-ready **Streamlit in Snowflake** app (`streamlit/data_contracts_app.py`):
+
+| Feature | Description |
+|---------|-------------|
+| **🤖 Cortex Analyst** | Chat interface using Cortex Analyst REST API |
+| **🔮 Horizon Dashboard** | Governance health with stoplights, charts, alerts |
+| **📊 Contract Details** | Individual contract exploration |
+| **ℹ️ About** | Architecture overview and resources |
+
+**Technical Highlights:**
+- Cortex Analyst REST API integration (`/api/v2/cortex/analyst/message`)
+- Native semantic view support (`semantic_view://SEM_DEV.SEM_SALES.SALES_ANALYTICS`)
+- Auto-generated semantic SQL with `AGG()` functions
+- Graceful fallback to `CORTEX.COMPLETE()` LLM
 
 #### 🔐 Snowflake Horizon Governance at Runtime
 

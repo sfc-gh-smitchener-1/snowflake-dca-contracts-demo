@@ -373,7 +373,17 @@ METRICS: supplier_count, total_revenue, total_quantity, total_delivery_days, lin
         'PRODUCT_ANALYTICS': """DIMENSIONS: PART_NAME, BRAND, MANUFACTURER, PART_TYPE, SIZE_CATEGORY, PRICE_TIER, CONTAINER_TYPE, RETURN_STATUS
 METRICS: product_count, total_retail_value, total_revenue, total_net_revenue, total_quantity_sold, total_inventory, total_inventory_cost, average_retail_price, average_supply_cost""",
         'GOVERNANCE_ANALYTICS': """DIMENSIONS: CONTRACT_ID, CONTRACT_TYPE, STATUS, PRODUCER_SYSTEM, CONSUMER_SYSTEM, USE_CASE, RULE_NAME, SEVERITY, ENABLED, ALERT_TYPE, TITLE
-METRICS: contract_count, rule_count, alert_count"""
+METRICS: contract_count, rule_count, alert_count, consumer_count, average_consumers_per_contract, average_rules_per_contract""",
+        'CONTRACT_HEALTH_ANALYTICS': """DIMENSIONS: CONTRACT_ID, OVERALL_HEALTH, FRESHNESS_STATUS, DATA_CLASSIFICATION, SLA_TYPE, IS_VIOLATION
+METRICS: health_score, contract_count, consumer_total, metric_count, violations, compliance_rate""",
+        'DATA_QUALITY_ANALYTICS': """DIMENSIONS: CONTRACT_ID, CONTRACT_TYPE, PRODUCER_SYSTEM, RULE_NAME, RULE_TYPE, SEVERITY, PASSED
+METRICS: check_count, passed_count, failed_count, rule_count, contract_count, pass_rate""",
+        'ALERT_ANALYTICS': """DIMENSIONS: ALERT_ID, ALERT_TYPE, SEVERITY, ALERT_STATUS, TITLE, CONTRACT_ID, PRODUCER_SYSTEM, CONTRACT_TYPE
+METRICS: total_alerts, open_alerts, acknowledged, resolved, critical_count, warning_count, affected_contracts""",
+        'TAG_COVERAGE_ANALYTICS': """DIMENSIONS: CONTRACT_ID, CONTRACT_TYPE, PRODUCER_SYSTEM, CONTRACT_STATUS
+METRICS: total_columns, classification_coverage, pii_coverage, ai_coverage, contract_count, overall_coverage""",
+        'CONSUMER_ANALYTICS': """DIMENSIONS: CONSUMER_ID, CONSUMER_SYSTEM, CONSUMER_EMAIL, USE_CASE, ACCESS_LEVEL, CONTRACT_ID, CONTRACT_TYPE, PRODUCER_SYSTEM
+METRICS: consumer_count, unique_systems, contract_count, avg_consumers_per_contract"""
     }
     
     for key, ctx in view_contexts.items():
@@ -503,11 +513,18 @@ def get_semantic_views():
 def get_default_semantic_views():
     """Return default list of semantic views"""
     return [
+        # Business Analytics
         'SEM_DEV.SEM_SALES.SALES_ANALYTICS',
         'SEM_DEV.SEM_CUSTOMER.CUSTOMER_ANALYTICS', 
         'SEM_DEV.SEM_SALES.SUPPLIER_ANALYTICS',
         'SEM_DEV.SEM_PRODUCT.PRODUCT_ANALYTICS',
-        'SEM_DEV.SEM_GOVERNANCE.GOVERNANCE_ANALYTICS'
+        # Governance Analytics
+        'SEM_DEV.SEM_GOVERNANCE.GOVERNANCE_ANALYTICS',
+        'SEM_DEV.SEM_GOVERNANCE.CONTRACT_HEALTH_ANALYTICS',
+        'SEM_DEV.SEM_GOVERNANCE.DATA_QUALITY_ANALYTICS',
+        'SEM_DEV.SEM_GOVERNANCE.ALERT_ANALYTICS',
+        'SEM_DEV.SEM_GOVERNANCE.TAG_COVERAGE_ANALYTICS',
+        'SEM_DEV.SEM_GOVERNANCE.CONSUMER_ANALYTICS'
     ]
 
 # ============================================================================
@@ -657,6 +674,36 @@ def render_cortex_page():
                 "Show alert counts by type",
                 "What is the breakdown by contract type?",
                 "How many rules are there by severity?"
+            ],
+            "SEM_DEV.SEM_GOVERNANCE.CONTRACT_HEALTH_ANALYTICS": [
+                "What is the overall health by contract?",
+                "Show contracts with SLA violations",
+                "What is the compliance rate by data classification?",
+                "How many contracts are healthy vs warning?"
+            ],
+            "SEM_DEV.SEM_GOVERNANCE.DATA_QUALITY_ANALYTICS": [
+                "What is the pass rate by contract?",
+                "Show failed quality rules by severity",
+                "Which rules fail most frequently?",
+                "What is the quality score trend by producer?"
+            ],
+            "SEM_DEV.SEM_GOVERNANCE.ALERT_ANALYTICS": [
+                "How many open alerts are there?",
+                "Show critical alerts by contract",
+                "What is the breakdown of alerts by type?",
+                "Which contracts have the most alerts?"
+            ],
+            "SEM_DEV.SEM_GOVERNANCE.TAG_COVERAGE_ANALYTICS": [
+                "What is the overall tag coverage?",
+                "Show contracts with low PII tag coverage",
+                "What is the AI tag coverage by producer?",
+                "Which contracts need more tagging?"
+            ],
+            "SEM_DEV.SEM_GOVERNANCE.CONSUMER_ANALYTICS": [
+                "How many consumers are there per contract?",
+                "Show contracts with most consumers",
+                "What are the use cases by access level?",
+                "Which consumer systems use the most data?"
             ]
         }
         

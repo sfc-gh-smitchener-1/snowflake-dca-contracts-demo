@@ -22,21 +22,36 @@ This document provides proven sample questions that can be asked of **Snowflake 
 
 ## How to Use These Questions
 
-### With Cortex Analyst (SQL)
+### With Cortex Analyst REST API
 
-```sql
--- Direct Cortex Analyst call
-SELECT SNOWFLAKE.CORTEX.ANALYST(
-    'What was our total revenue last quarter?',
-    '@SEM_DEV.SEM_SALES.SEMANTIC_MODELS/sales_analytics_model.yaml'
-);
+The Streamlit app uses the Cortex Analyst REST API with native Semantic Views:
+
+```python
+# API call to Cortex Analyst
+POST /api/v2/cortex/analyst/message
+{
+    "messages": [{"role": "user", "content": [{"type": "text", "text": "What was revenue last quarter?"}]}],
+    "semantic_view": "SEM_DEV.SEM_SALES.SALES_ANALYTICS"
+}
 ```
 
-### With Snowflake Intelligence (UI)
+### With Native Semantic View SQL
 
-1. Open Snowflake Intelligence in Snowsight
-2. Select a semantic model from `@SEM_DEV.SEM_SALES.SEMANTIC_MODELS`
-3. Ask questions in natural language
+Query semantic views directly using the `SEMANTIC_VIEW()` function:
+
+```sql
+-- Using SEMANTIC_VIEW() function
+SELECT * FROM SEMANTIC_VIEW(
+    SEM_DEV.SEM_SALES.SALES_ANALYTICS
+    DIMENSIONS REGION_NAME, YEAR
+    METRICS total_revenue
+);
+
+-- Using AGG() for metrics
+SELECT REGION_NAME, AGG(total_revenue) AS revenue
+FROM SEM_DEV.SEM_SALES.SALES_ANALYTICS
+GROUP BY REGION_NAME;
+```
 
 ### For AI Agents
 
@@ -45,7 +60,11 @@ Use the `AI_AGENT` role which has access only to AI-safe semantic views:
 ```sql
 USE ROLE AI_AGENT;
 -- All queries automatically respect AI_ALLOWED tags
-SELECT * FROM SEM_DEV.SEM_SALES.VW_SALES_ANALYTICS;
+SELECT * FROM SEMANTIC_VIEW(
+    SEM_DEV.SEM_SALES.SALES_ANALYTICS
+    DIMENSIONS REGION_NAME
+    METRICS total_revenue
+);
 ```
 
 ## Question Categories
@@ -439,26 +458,49 @@ WHERE AI_SAFE = TRUE;
 
 ## Using with Cortex Analyst
 
-To use these questions with Cortex Analyst:
+### Option 1: Streamlit App (Recommended)
 
-1. **Upload semantic models** to the stage:
-   ```sql
-   PUT file://semantic_models/sales_analytics_model.yaml 
-       @SEM_DEV.SEM_SALES.SEMANTIC_MODELS;
-   ```
+Deploy the Streamlit app which uses the Cortex Analyst REST API:
 
-2. **Query via Cortex Analyst API**:
-   ```python
-   from snowflake.core import Root
-   
-   root = Root(session)
-   response = root.databases["SEM_DEV"].schemas["SEM_SALES"].cortex_analyst.complete(
-       semantic_model="@SEM_DEV.SEM_SALES.SEMANTIC_MODELS/sales_analytics_model.yaml",
-       messages=[{"role": "user", "content": "What was revenue by region last quarter?"}]
-   )
-   ```
+```sql
+-- Deploy the app
+@sql/12_streamlit_app.sql
 
-3. **Or use Snowflake Intelligence UI** - Simply ask questions in natural language and the system will use the semantic models to generate accurate SQL.
+-- Upload app to stage
+PUT file://streamlit/data_contracts_app.py @SEM_DEV.SEM_SALES.STREAMLIT_STAGE AUTO_COMPRESS=FALSE OVERWRITE=TRUE;
+```
+
+Then access via **Projects → Streamlit → DATA_CONTRACTS_APP** and ask questions in natural language.
+
+### Option 2: Direct REST API Call
+
+```python
+import requests
+
+def ask_cortex_analyst(question, semantic_view):
+    url = f"https://{host}/api/v2/cortex/analyst/message"
+    body = {
+        "messages": [{"role": "user", "content": [{"type": "text", "text": question}]}],
+        "semantic_view": semantic_view
+    }
+    headers = {"Authorization": f'Snowflake Token="{token}"'}
+    response = requests.post(url, json=body, headers=headers)
+    return response.json()
+
+# Example
+result = ask_cortex_analyst("What was revenue by region?", "SEM_DEV.SEM_SALES.SALES_ANALYTICS")
+```
+
+### Option 3: Direct SQL with SEMANTIC_VIEW()
+
+```sql
+-- Query using SEMANTIC_VIEW() function
+SELECT * FROM SEMANTIC_VIEW(
+    SEM_DEV.SEM_SALES.SALES_ANALYTICS
+    DIMENSIONS REGION_NAME
+    METRICS total_revenue
+);
+```
 
 ---
 
