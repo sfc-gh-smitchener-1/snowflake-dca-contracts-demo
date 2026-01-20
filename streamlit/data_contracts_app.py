@@ -415,7 +415,7 @@ def render_cortex_page():
         st.write("")
         if st.button("🔄 Refresh", use_container_width=True):
             st.cache_data.clear()
-            st.rerun()
+            st.experimental_rerun()
     
     st.divider()
     
@@ -424,11 +424,21 @@ def render_cortex_page():
         st.session_state.chat_history = []
     
     # Display chat history
-    for chat in st.session_state.chat_history:
-        with st.chat_message(chat["role"]):
-            st.markdown(chat["content"])
+    for i, chat in enumerate(st.session_state.chat_history):
+        if chat["role"] == "user":
+            st.markdown(f"""
+            <div class="chat-bubble user-bubble">
+                <strong>👤 You</strong><br>{chat["content"]}
+            </div>
+            """, unsafe_allow_html=True)
+        else:
+            st.markdown(f"""
+            <div class="chat-bubble assistant-bubble">
+                <strong>🤖 Cortex Analyst</strong><br>{chat["content"]}
+            </div>
+            """, unsafe_allow_html=True)
             if "sql" in chat and chat["sql"]:
-                with st.expander("View Generated SQL"):
+                with st.expander("View Generated SQL", expanded=False):
                     st.code(chat["sql"], language="sql")
             if "df" in chat and chat["df"] is not None and not chat["df"].empty:
                 st.dataframe(chat["df"], use_container_width=True)
@@ -482,18 +492,31 @@ def render_cortex_page():
             with cols[i % 2]:
                 if st.button(f"💬 {q}", key=f"sample_{i}", use_container_width=True):
                     process_question(q, selected_view)
-                    st.rerun()
+                    st.experimental_rerun()
     
-    # Chat input
-    if prompt := st.chat_input("Ask a question about your data..."):
-        process_question(prompt, selected_view)
-        st.rerun()
+    st.divider()
+    
+    # Text input for questions (compatible with older Streamlit)
+    col1, col2 = st.columns([5, 1])
+    with col1:
+        user_question = st.text_input(
+            "Ask a question",
+            placeholder="Ask a question about your data...",
+            label_visibility="collapsed",
+            key="question_input"
+        )
+    with col2:
+        ask_clicked = st.button("🚀 Ask", use_container_width=True)
+    
+    if ask_clicked and user_question:
+        process_question(user_question, selected_view)
+        st.experimental_rerun()
     
     # Clear chat button
     if st.session_state.chat_history:
         if st.button("🗑️ Clear Chat", key="clear_chat"):
             st.session_state.chat_history = []
-            st.rerun()
+            st.experimental_rerun()
 
 def process_question(prompt: str, semantic_view: str):
     """Process a user question via Cortex Analyst API"""
