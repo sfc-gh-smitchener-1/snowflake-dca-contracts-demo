@@ -167,40 +167,148 @@ def get_session():
     return get_active_session()
 
 def call_cortex_analyst(prompt: str, semantic_view: str):
-    """Calls the Cortex Analyst API using the SiS session token."""
+    """Calls the Cortex Analyst via SQL function for Streamlit in Snowflake."""
     session = get_session()
     
     try:
-        # Get host from session
-        host = session.connection.host
+        # Use the CORTEX.ANALYST SQL function instead of REST API
+        # This works natively in Snowflake without needing tokens
+        escaped_prompt = prompt.replace("'", "''")
+        escaped_view = semantic_view.replace("'", "''")
         
-        # API Endpoint for Cortex Analyst
-        url = f"https://{host}/api/v2/cortex/analyst/message"
+        # Call Cortex Analyst via SQL
+        result = session.sql(f"""
+            SELECT SNOWFLAKE.CORTEX.ANALYST(
+                '{escaped_prompt}',
+                SEMANTIC_VIEW => '{escaped_view}'
+            ) AS response
+        """).to_pandas()
         
-        # Payload for Semantic Views
-        request_body = {
-            "messages": [
-                {"role": "user", "content": [{"type": "text", "text": prompt}]}
-            ],
-            "semantic_model_file": f"semantic_view://{semantic_view}"
-        }
-        
-        # Use the native Snowflake session token for authentication
-        headers = {
-            "Authorization": f'Snowflake Token="{session._conn._token}"',
-            "Content-Type": "application/json",
-            "Accept": "application/json"
-        }
-
-        response = requests.post(url, json=request_body, headers=headers)
-        
-        if response.status_code == 200:
-            return response.json(), None
+        if not result.empty:
+            response_json = json.loads(result['RESPONSE'].iloc[0])
+            return response_json, None
         else:
-            return None, f"API Error {response.status_code}: {response.text}"
+            return None, "No response from Cortex Analyst"
             
     except Exception as e:
-        return None, f"Connection Error: {str(e)}"
+        error_msg = str(e)
+        # If CORTEX.ANALYST function doesn't exist, fall back to COMPLETE
+        if "Unknown function" in error_msg or "does not exist" in error_msg:
+            return call_cortex_complete_fallback(prompt, semantic_view)
+        return None, f"Error: {error_msg}"
+
+def call_cortex_complete_fallback(prompt: str, semantic_view: str):
+    """Fallback using CORTEX.COMPLETE to generate SQL for semantic views."""
+    session = get_session()
+    
+    try:
+        # Get semantic view metadata
+        view_info = get_semantic_view_info(semantic_view)
+        
+        escaped_prompt = prompt.replace("'", "''")
+        escaped_view = semantic_view.replace("'", "''")
+        escaped_info = view_info.replace("'", "''")
+        
+        # Use CORTEX.COMPLETE to generate SQL
+        result = session.sql(f"""
+            SELECT SNOWFLAKE.CORTEX.COMPLETE(
+                'llama3.1-70b',
+                'Generate a SQL query for this Snowflake SEMANTIC VIEW.
+
+SEMANTIC VIEW: {escaped_view}
+
+{escaped_info}
+
+RULES:
+1. METRICS are pre-aggregated - SELECT them directly, do not wrap in SUM/AVG/COUNT
+2. DIMENSIONS are for grouping - use in SELECT and GROUP BY
+3. Query pattern: SELECT dimension, metric FROM {escaped_view} GROUP BY dimension
+4. Do NOT use table prefixes
+5. Return ONLY the SQL query, no explanation
+
+Question: {escaped_prompt}
+
+SQL:'
+            ) AS response
+        """).to_pandas()
+        
+        if not result.empty:
+            sql = result['RESPONSE'].iloc[0].strip()
+            
+            # Clean up the SQL
+            if '```' in sql:
+                parts = sql.split('```')
+                for part in parts:
+                    if 'SELECT' in part.upper():
+                        sql = part.strip()
+                        if sql.lower().startswith('sql'):
+                            sql = sql[3:].strip()
+                        break
+            
+            if ';' in sql:
+                sql = sql.split(';')[0] + ';'
+            
+            # Return in the same format as Cortex Analyst API
+            return {
+                "message": {
+                    "content": [
+                        {"type": "text", "text": "Here's the query for your question:"},
+                        {"type": "sql", "statement": sql}
+                    ]
+                }
+            }, None
+        else:
+            return None, "No response generated"
+            
+    except Exception as e:
+        return None, f"Error: {str(e)}"
+
+def get_semantic_view_info(semantic_view: str) -> str:
+    """Get metadata about a semantic view for LLM context."""
+    session = get_session()
+    
+    info_parts = []
+    
+    try:
+        # Get dimensions
+        dims = session.sql(f"SHOW SEMANTIC DIMENSIONS IN SEMANTIC VIEW {semantic_view}").to_pandas()
+        if not dims.empty and 'name' in dims.columns:
+            dim_names = dims['name'].tolist()
+            info_parts.append(f"DIMENSIONS (for GROUP BY): {', '.join(dim_names)}")
+    except:
+        pass
+    
+    try:
+        # Get metrics
+        metrics = session.sql(f"SHOW SEMANTIC METRICS IN SEMANTIC VIEW {semantic_view}").to_pandas()
+        if not metrics.empty and 'name' in metrics.columns:
+            metric_names = metrics['name'].tolist()
+            info_parts.append(f"METRICS (pre-aggregated, SELECT directly): {', '.join(metric_names)}")
+    except:
+        pass
+    
+    if info_parts:
+        return "\n".join(info_parts)
+    
+    # Fallback hardcoded info
+    view_contexts = {
+        'SALES_ANALYTICS': """DIMENSIONS: YEAR, QUARTER, MONTH, MONTH_NAME, FULL_DATE, REGION_NAME, NATION_NAME, MARKET_SEGMENT, CUSTOMER_TIER, PART_NAME, BRAND, PART_TYPE, PRICE_TIER, SUPPLIER_NAME, SUPPLIER_TIER, ORDER_STATUS, ORDER_PRIORITY, SHIP_MODE, RETURN_STATUS, DELIVERY_STATUS
+METRICS: total_revenue, total_net_revenue, total_discounts, total_tax, total_quantity, total_delivery_days, line_item_count, total_order_value, order_count, customer_count, average_order_value, average_delivery_days""",
+        'CUSTOMER_ANALYTICS': """DIMENSIONS: MARKET_SEGMENT, CUSTOMER_TIER, BALANCE_STATUS, REGION_NAME, NATION_NAME, ACTIVITY_STATUS, FIRST_ORDER_DATE, LAST_ORDER_DATE
+METRICS: customer_count, total_lifetime_value, total_orders_all, total_tenure_days, total_recency_days, average_lifetime_value, average_orders_per_customer, average_recency, average_tenure""",
+        'SUPPLIER_ANALYTICS': """DIMENSIONS: SUPPLIER_NAME, SUPPLIER_TIER, NATION_NAME, REGION_NAME, DELIVERY_STATUS, RETURN_STATUS
+METRICS: supplier_count, total_revenue, total_quantity, total_delivery_days, line_item_count, total_inventory, total_supply_cost, average_delivery_days, average_revenue_per_supplier""",
+        'PRODUCT_ANALYTICS': """DIMENSIONS: PART_NAME, BRAND, MANUFACTURER, PART_TYPE, SIZE_CATEGORY, PRICE_TIER, CONTAINER_TYPE, RETURN_STATUS
+METRICS: product_count, total_retail_value, total_revenue, total_net_revenue, total_quantity_sold, total_inventory, total_inventory_cost, average_retail_price, average_supply_cost""",
+        'GOVERNANCE_ANALYTICS': """DIMENSIONS: CONTRACT_ID, CONTRACT_TYPE, STATUS, PRODUCER_SYSTEM, CONSUMER_SYSTEM, USE_CASE, RULE_NAME, SEVERITY, ENABLED, ALERT_TYPE, TITLE
+METRICS: contract_count, rule_count, alert_count"""
+    }
+    
+    for key, ctx in view_contexts.items():
+        if key in semantic_view.upper():
+            return ctx
+    
+    return "Query this semantic view to analyze the data."
 
 def execute_sql(sql: str):
     """Execute SQL and return DataFrame"""
